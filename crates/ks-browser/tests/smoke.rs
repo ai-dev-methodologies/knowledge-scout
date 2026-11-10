@@ -46,7 +46,9 @@ async fn snapshot_ignores_page_scripts_and_cdp_uses_no_tcp_port() {
     // pipe transport: Chrome writes no DevToolsActivePort and listens on no TCP port
     assert!(!profile.join("DevToolsActivePort").exists(), "DevToolsActivePort written: CDP is on a TCP port");
     let pid = s.browser_pid().to_string();
-    let lsof = std::process::Command::new("/usr/sbin/lsof").args(["-nP", "-a", "-p", &pid, "-iTCP", "-sTCP:LISTEN"]).output().unwrap();
+    // lsof lives in /usr/sbin on macOS and /usr/bin on Linux.
+    let lsof_bin = ["/usr/sbin/lsof", "/usr/bin/lsof"].into_iter().find(|p| std::path::Path::new(p).exists()).expect("lsof not found");
+    let lsof = std::process::Command::new(lsof_bin).args(["-nP", "-a", "-p", &pid, "-iTCP", "-sTCP:LISTEN"]).output().unwrap();
     assert!(String::from_utf8_lossy(&lsof.stdout).trim().is_empty(), "Chrome listens on TCP: {}", String::from_utf8_lossy(&lsof.stdout));
 
     s.navigate(&page).await.expect("navigate");

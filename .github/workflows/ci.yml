@@ -59,7 +59,7 @@ jobs:
         env:
           KS_TEST_BROWSER: "1"
           KS_NOTIFY: "0"
-        run: cargo test --workspace --locked
+        run: cargo test --workspace --locked --no-fail-fast
 
       - name: Stop Redis
         if: always()
