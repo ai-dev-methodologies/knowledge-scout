@@ -80,7 +80,7 @@
 ## 6. 배포
 
 - Claude Code plugin으로 배포한다. 스킬(`/ks:search`, `/ks:research`, `/ks:add`)과 MCP 서버 등록을 묶는다. `ks` 실행 파일은 plugin에 넣지 않고 사용자가 따로 설치한다. plugin은 설치할 때 `userConfig`로 `ks` 경로, 카드 데이터 디렉터리, Redis URL(비밀값)을 받아 MCP 서버의 `command`, `args`, `env`에 쓴다.
-- 브라우저 구조는 gstack browse(MIT)를 기준으로 삼는다. 코드를 가져오면 고지를 포함한다. 탐지 회피 기능은 넣지 않는다.
+- 사람 개입(handoff/resume)과 이벤트 설계는 gstack browse(MIT)를 참고했고 코드는 가져오지 않았다. 데몬과 CDP 클라이언트는 아래 agent-browser를 기준으로 한다. 탐지 회피 기능은 넣지 않는다.
 - Google 브라우저 수집은 약관 위험이 있다. 기본값은 낮은 빈도와 사람 개입 우선으로 두고, README에 명시한다.
 
 ## 7. 저장소 밖 (이 저장소에 넣지 않는 것)

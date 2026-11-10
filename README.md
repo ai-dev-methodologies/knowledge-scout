@@ -4,6 +4,8 @@
 
 ## 설치와 설정
 
+지원 플랫폼: macOS에서 개발하고 실제로 써 봤습니다. Linux는 CI(ubuntu)에서 전체 테스트가 통과하지만 실제 사용은 확인하지 않았습니다. Windows는 지원하지 않습니다.
+
 ### 1. Redis
 
 검색 색인은 Redis에 둡니다. 저장소 루트에 `.env` 파일을 만들어 `KS_REDIS_PASSWORD=<비밀번호>`를 적고(포트를 바꾸려면 `KS_REDIS_PORT`도 적습니다. 기본값은 6379), Redis를 띄웁니다. `.env`는 git에 올라가지 않으며, 비밀번호를 저장소에 넣지 않습니다.
@@ -235,11 +237,12 @@ flowchart TB
 - Google 브라우저 수집 데몬: 로그인(`ks auth google`), 검색(`ks research search --engine google-browser`), 사람 개입 이벤트와 `handoff` / `resume`, 검색 쿼터와 질의 간격, macOS 데스크톱 알림
 - Claude Code plugin `ks`(`plugins/ks`)와 marketplace 매니페스트(`.claude-plugin/marketplace.json`): 스킬 `/ks:search`, `/ks:research`, `/ks:add`, 그리고 MCP 서버 등록. `ks` 실행 파일은 plugin에 포함하지 않고 사용자가 따로 설치하며, plugin은 설치할 때 받은 경로, 데이터 디렉터리, Redis URL을 씁니다.
 
+- CI: ubuntu에서 Redis와 Chrome 게이트를 켠 전체 테스트(`.github/workflows/ci.yml`)
 **계획**
 - `ks export --scope team`
 - 팀 공유 모드: 팀 저장소의 PR과 CI 검사, 개인·팀 출처 표시
 - `google-api`, `ai-websearch` 수집 어댑터와 저장소 밖의 비공개 수집기 어댑터
-- 사람 개입 이벤트별 절차 문서, pre-push 훅과 CI 검사
+- 사람 개입 이벤트별 절차 문서와 pre-push 훅
 
 ## Google 브라우저 수집 주의
 
