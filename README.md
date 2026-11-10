@@ -236,8 +236,8 @@ flowchart TB
 - MCP 서버(`ks_search`, `ks_get`, `ks_record`, `ks_search_web`)
 - Google 브라우저 수집 데몬: 로그인(`ks auth google`), 검색(`ks research search --engine google-browser`), 사람 개입 이벤트와 `handoff` / `resume`, 검색 쿼터와 질의 간격, macOS 데스크톱 알림
 - Claude Code plugin `ks`(`plugins/ks`)와 marketplace 매니페스트(`.claude-plugin/marketplace.json`): 스킬 `/ks:search`, `/ks:research`, `/ks:add`, 그리고 MCP 서버 등록. `ks` 실행 파일은 plugin에 포함하지 않고 사용자가 따로 설치하며, plugin은 설치할 때 받은 경로, 데이터 디렉터리, Redis URL을 씁니다.
-
 - CI: ubuntu에서 Redis와 Chrome 게이트를 켠 전체 테스트(`.github/workflows/ci.yml`)
+
 **계획**
 - `ks export --scope team`
 - 팀 공유 모드: 팀 저장소의 PR과 CI 검사, 개인·팀 출처 표시
