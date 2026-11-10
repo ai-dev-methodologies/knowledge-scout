@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      # Ubuntu 24.04 blocks unprivileged user namespaces for unconfined binaries, which breaks Chrome's own
+      # sandbox. The sandbox stays on (ks never passes --no-sandbox); the runner policy is relaxed instead.
+      - name: Allow Chrome's sandbox (AppArmor userns restriction)
+        run: |
+          if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
+      # ks finds Chrome through PATH (google-chrome) when KS_CHROME is unset: crates/ks-browser/src/cdp/chrome.rs find_chrome.
+      - name: Check Chrome is installed
+        run: |
+          command -v google-chrome
+          google-chrome --version
+
+      - name: Start Redis (docker-compose.yml)
+        run: |
+          set -euo pipefail
+          pw="$(openssl rand -hex 24)"
+          echo "::add-mask::$pw"
+          umask 077
+          printf 'KS_REDIS_PASSWORD=%s\nKS_REDIS_PORT=6390\n' "$pw" > .env
+          echo "KS_TEST_REDIS_URL=redis://:${pw}@127.0.0.1:6390" >> "$GITHUB_ENV"
+          docker compose up -d --wait
+
+      - name: Test
+        env:
+          KS_TEST_BROWSER: "1"
+          KS_NOTIFY: "0"
+        run: cargo test --workspace --locked
+
+      - name: Stop Redis
+        if: always()
+        run: docker compose down -v

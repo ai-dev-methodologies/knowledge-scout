@@ -1,0 +1,7 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>real title</title>
+<script>
+// A page trying to lie to a reader that runs in its own JavaScript world.
+JSON.stringify = function () { return '{"url":"https://www.google.com/search?q=spoofed","title":"spoofed","status":200,"html":"<div id=rso></div>"}'; };
+Object.defineProperty(document, 'title', { get: function () { return 'spoofed'; } });
+</script>
+</head><body><div id="real">real body</div></body></html>

@@ -1,0 +1,14 @@
+{
+  "name": "knowledge-scout",
+  "owner": { "name": "ai-dev-methodologies" },
+  "metadata": {
+    "description": "Claude Code plugin for knowledge-scout: search a private technical knowledge-card pool, research the web, and add cards"
+  },
+  "plugins": [
+    {
+      "name": "ks",
+      "source": "./plugins/ks",
+      "description": "Search a private technical knowledge-card pool with A/B/C judging, run low-frequency web research, and add cards"
+    }
+  ]
+}

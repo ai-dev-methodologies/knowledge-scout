@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ks": {
+      "command": "${user_config.ks_path}",
+      "args": ["mcp", "serve", "--data", "${user_config.data_dir}"],
+      "env": {
+        "KS_REDIS_URL": "${user_config.redis_url}"
+      }
+    }
+  }
+}

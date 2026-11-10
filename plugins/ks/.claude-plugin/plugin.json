@@ -1,0 +1,28 @@
+{
+  "name": "ks",
+  "version": "0.1.0",
+  "description": "knowledge-scout: search a private technical knowledge-card pool with A/B/C judging, run low-frequency web research, and add cards",
+  "author": { "name": "ai-dev-methodologies", "url": "https://github.com/ai-dev-methodologies" },
+  "license": "Apache-2.0",
+  "userConfig": {
+    "ks_path": {
+      "type": "file",
+      "title": "ks executable",
+      "description": "Path to the installed `ks` executable (for example the output of `command -v ks`)",
+      "required": true
+    },
+    "data_dir": {
+      "type": "directory",
+      "title": "Card data directory",
+      "description": "Private directory that holds `cards/` and one vocabulary file: `vocab/terms.yaml`, `vocab/terms.yml`, or `vocab/terms.json`",
+      "required": true
+    },
+    "redis_url": {
+      "type": "string",
+      "title": "Redis URL",
+      "description": "Index server URL with its password, for example redis://:<password>@127.0.0.1:6379",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

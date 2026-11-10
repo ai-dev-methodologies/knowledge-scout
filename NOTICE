@@ -1,0 +1,31 @@
+knowledge-scout
+Copyright 2026 the knowledge-scout authors
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software from agent-browser
+(https://github.com/vercel-labs/agent-browser), Copyright 2025 Vercel Inc.,
+licensed under the Apache License, Version 2.0. The full license text is in
+third_party/agent-browser/LICENSE.
+
+Files copied and modified from agent-browser at commit
+e7519957b9067c541825afa21a792fbe1f483047 (each file states its origin and its
+modifications in a header comment):
+
+  crates/ks-browser/build.rs                       <- cli/build.rs
+  crates/ks-browser/src/cdp/client.rs              <- cli/src/native/cdp/client.rs
+  crates/ks-browser/src/cdp/chrome.rs              <- cli/src/native/cdp/chrome.rs
+  crates/ks-browser/src/cdp/types.rs               <- cli/src/native/cdp/types.rs
+  crates/ks-browser/cdp-protocol/browser_protocol.json
+                                                   <- cli/cdp-protocol/browser_protocol.json
+                                                      (only the Browser, Page and Target domains)
+  crates/ks-browser/cdp-protocol/js_protocol.json  <- cli/cdp-protocol/js_protocol.json
+                                                      (only the Runtime domain)
+
+The two protocol JSON files are the Chrome DevTools Protocol definitions as
+distributed in agent-browser; their upstream origin is the Chrome DevTools
+Protocol project (https://github.com/ChromeDevTools/devtools-protocol),
+Copyright 2014 The Chromium Authors, licensed under a BSD-style (3-clause)
+license whose terms also apply to them. The full license text is in
+third_party/devtools-protocol/LICENSE.
+
+agent-browser does not ship a NOTICE file at the commit above.
