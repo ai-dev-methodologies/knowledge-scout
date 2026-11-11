@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "release/**", "rc/**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,7 +18,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,16 +52,62 @@ jobs:
           pw="$(openssl rand -hex 24)"
           echo "::add-mask::$pw"
           umask 077
-          printf 'KS_REDIS_PASSWORD=%s\nKS_REDIS_PORT=6390\n' "$pw" > .env
-          echo "KS_TEST_REDIS_URL=redis://:${pw}@127.0.0.1:6390" >> "$GITHUB_ENV"
+          printf 'KS_REDIS_PASSWORD=%s\nKS_REDIS_PORT=6391\n' "$pw" > .env
+          echo "KS_TEST_REDIS_URL=redis://:${pw}@127.0.0.1:6391" >> "$GITHUB_ENV"
           docker compose up -d --wait
+          # The test guard (ks_core::testkit) requires this marker on the server before it writes anything.
+          docker exec ks-redis sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli SET kstest:instance 1'
 
+      - name: Test wrapper self-test
+        run: bash scripts/ks-redis-test-test.sh
+
+      # The wrapper serializes the Redis tests with flock (util-linux) and checks the server settings before and after.
       - name: Test
         env:
           KS_TEST_BROWSER: "1"
           KS_NOTIFY: "0"
-        run: cargo test --workspace --locked --no-fail-fast
+        run: bash scripts/ks-redis-test.sh cargo test --workspace --locked --no-fail-fast
 
       - name: Stop Redis
         if: always()
         run: docker compose down -v
+
+  # Static Linux x86_64 binary (musl) for hosts with an old glibc (CentOS 7 era, glibc 2.17). Built only for release
+  # candidates and releases, or on demand; the artifact carries a sha256 file.
+  linux-binary:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/rc/') || startsWith(github.ref, 'refs/heads/release/')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust with the musl target
+        run: |
+          rustup toolchain install stable --profile minimal --target x86_64-unknown-linux-musl
+          rustup default stable
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build
+        run: cargo build --release -p ks-cli --locked --target x86_64-unknown-linux-musl
+
+      - name: Check and package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp target/x86_64-unknown-linux-musl/release/ks dist/ks
+          file dist/ks
+          file dist/ks | grep -Eq 'statically linked|static-pie linked' || { echo "ks is not statically linked" >&2; exit 1; }
+          [ "$(./dist/ks --version)" = "ks $(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ks-cli") | .version')" ]
+          ./dist/ks --version
+          (cd dist && sha256sum ks > ks.sha256 && cat ks.sha256)
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ks-linux-x86_64
+          path: |
+            dist/ks
+            dist/ks.sha256
+          if-no-files-found: error
