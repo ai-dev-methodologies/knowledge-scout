@@ -172,7 +172,7 @@ async fn file_backend_lists_tools_and_serves_search_and_get() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn redis_backend_serves_search_and_records_applications() {
-    let Some(url) = std::env::var("KS_TEST_REDIS_URL").ok().filter(|u| !u.is_empty()) else { return };
+    let Some(url) = ks_core::testkit::test_redis_url() else { return };
     let prefix = format!("kstest-mcp-{}:", std::process::id());
     let _purge = Purge(url.clone(), prefix.clone());
     let f = Fixture::new("redis");
@@ -244,7 +244,7 @@ async fn search_input_is_capped() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn redis_backend_refuses_every_search_while_the_index_is_stale() {
-    let Some(url) = std::env::var("KS_TEST_REDIS_URL").ok().filter(|u| !u.is_empty()) else { return };
+    let Some(url) = ks_core::testkit::test_redis_url() else { return };
     let prefix = format!("kstest-mcp-stale-{}:", std::process::id());
     let _purge = Purge(url.clone(), prefix.clone());
     let f = Fixture::new("stale");

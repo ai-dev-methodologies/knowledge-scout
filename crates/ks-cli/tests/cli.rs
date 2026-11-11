@@ -282,7 +282,7 @@ fn record_rejects_bad_verdicts_and_outcomes_before_touching_redis() {
 }
 
 fn test_redis() -> Option<(String, String)> {
-    let url = std::env::var("KS_TEST_REDIS_URL").ok().filter(|u| !u.is_empty())?;
+    let url = ks_core::testkit::test_redis_url()?;
     Some((url, format!("kstest-cli-{}-{}:", std::process::id(), N.fetch_add(1, Ordering::SeqCst))))
 }
 struct Purge(String, String);
