@@ -53,9 +53,26 @@ fn random_hex() -> Result<String> {
     Ok(hex::encode(b))
 }
 
-fn rerr(e: redis::RedisError) -> Error {
+pub(crate) fn rerr(e: redis::RedisError) -> Error {
     // RedisError's Display never contains the connection URL (and so never the password).
     Error::msg(format!("redis: {e}"))
+}
+
+/// The Redis URL and key prefix `Index::from_env` uses (see there). The URL may embed the password: never print it.
+pub fn env_url_and_prefix() -> Result<(String, String)> {
+    let env = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
+    let url = match env("KS_REDIS_URL") {
+        Some(u) => u,
+        None => {
+            let mut u = url::Url::parse(&format!("redis://{}:{}", env("KS_REDIS_HOST").unwrap_or_else(|| "127.0.0.1".into()), env("KS_REDIS_PORT").unwrap_or_else(|| "6379".into())))
+                .map_err(|_| Error::msg("redis: invalid KS_REDIS_HOST/KS_REDIS_PORT"))?;
+            if let Some(pw) = env("KS_REDIS_PASSWORD") {
+                let _ = u.set_password(Some(&pw));
+            }
+            u.to_string()
+        }
+    };
+    Ok((url, env("KS_KEY_PREFIX").unwrap_or_else(|| DEFAULT_PREFIX.into())))
 }
 
 pub struct Index {
@@ -235,7 +252,7 @@ fn git_sha(dir: &Path) -> Option<String> {
     (top == std::fs::canonicalize(dir).ok()?).then(|| git(&["rev-parse", "HEAD"])).flatten()
 }
 
-fn glob_escape(s: &str) -> String {
+pub(crate) fn glob_escape(s: &str) -> String {
     s.chars().flat_map(|c| if "*?[]\\".contains(c) { vec!['\\', c] } else { vec![c] }).collect()
 }
 
@@ -253,19 +270,8 @@ impl Index {
     /// `KS_REDIS_URL`, or `redis://[:KS_REDIS_PASSWORD@]KS_REDIS_HOST:KS_REDIS_PORT` (127.0.0.1:6379 by default).
     /// Key prefix: `KS_KEY_PREFIX` (default `ks:`). The password is only ever read from the environment.
     pub fn from_env() -> Result<Index> {
-        let env = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
-        let url = match env("KS_REDIS_URL") {
-            Some(u) => u,
-            None => {
-                let mut u = url::Url::parse(&format!("redis://{}:{}", env("KS_REDIS_HOST").unwrap_or_else(|| "127.0.0.1".into()), env("KS_REDIS_PORT").unwrap_or_else(|| "6379".into())))
-                    .map_err(|_| Error::msg("redis: invalid KS_REDIS_HOST/KS_REDIS_PORT"))?;
-                if let Some(pw) = env("KS_REDIS_PASSWORD") {
-                    let _ = u.set_password(Some(&pw));
-                }
-                u.to_string()
-            }
-        };
-        Index::connect(&url, &env("KS_KEY_PREFIX").unwrap_or_else(|| DEFAULT_PREFIX.into()))
+        let (url, prefix) = env_url_and_prefix()?;
+        Index::connect(&url, &prefix)
     }
 
     fn k(&mut self, suffix: &str) -> String {

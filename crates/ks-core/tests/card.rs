@@ -100,7 +100,8 @@ fn parse_rejects_malformed_files() {
     assert!(Card::parse("---\nschema: card-v1\n").is_err(), "unterminated frontmatter");
     let md = full().render();
     assert!(Card::parse(&md.replace("schema: card-v1", "schema: card-v9")).is_err());
-    assert!(Card::parse(&md.replace("scope: team", "scope: public")).is_err());
+    assert!(Card::parse(&md.replace("scope: team", "scope: everyone")).is_err());
+    assert_eq!(Card::parse(&md.replace("scope: team", "scope: public")).unwrap().scope, Scope::Public, "public is a scope");
     assert!(Card::parse(&md.replace("access: A", "access: Z")).is_err());
     let stray = md.replace("## 요약\n\n", "## 요약\n\nstray prose line\n");
     assert!(Card::parse(&stray).is_err(), "non-bullet line inside the summary section");

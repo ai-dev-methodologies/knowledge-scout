@@ -128,7 +128,12 @@ fn import_scope_flag_and_yaml_vocab() {
     assert!(o.status.success(), "{}", err(&o));
     let md = fs::read_to_string(cards.join("topic-a").join(format!("{}.md", ks_core::card::card_id("https://m.com/b")))).unwrap();
     assert!(md.contains("scope: team") && md.contains("entities:\n- redis"), "{md}");
-    let bad = ks(&[&"card", &"import", &"--jsonl-dir", &f.kit, &"--vocab", &yaml, &"--out", &cards, &"--scope", &"public"]);
+    let public = f.t.join("public-cards");
+    let o = ks(&[&"card", &"import", &"--jsonl-dir", &f.kit, &"--vocab", &yaml, &"--out", &public, &"--scope", &"public"]);
+    assert!(o.status.success(), "{}", err(&o));
+    let md = fs::read_to_string(public.join("topic-a").join(format!("{}.md", ks_core::card::card_id("https://m.com/b")))).unwrap();
+    assert!(md.contains("\nscope: public\n"), "{md}");
+    let bad = ks(&[&"card", &"import", &"--jsonl-dir", &f.kit, &"--vocab", &yaml, &"--out", &cards, &"--scope", &"everyone"]);
     assert_eq!(bad.status.code(), Some(2));
 }
 
