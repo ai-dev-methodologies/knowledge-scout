@@ -877,7 +877,7 @@ dependencies = [
 
 [[package]]
 name = "ks-browser"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libc",
  "scraper",
@@ -889,7 +889,7 @@ dependencies = [
 
 [[package]]
 name = "ks-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -910,7 +910,7 @@ dependencies = [
 
 [[package]]
 name = "ks-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hex",
  "libc",
