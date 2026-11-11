@@ -172,3 +172,11 @@ fn parse_kit_line_replaces_lone_surrogate_escapes_but_keeps_valid_pairs_and_esca
     assert_eq!(parse_kit_line(r#"{"plain":"한글 😀"}"#).unwrap()["plain"], "한글 😀");
     assert!(parse_kit_line("{not json").is_err());
 }
+
+#[test]
+fn card_key_of_is_the_normalized_url_else_path() {
+    assert_eq!(card_key_of("  https://Example.com/a/b/?x=1#f "), "https://example.com/a/b");
+    assert_eq!(card_key_of("notes/x.md"), "path:notes/x.md");
+    assert_eq!(card_key_of("ftp://example.com/x"), "path:ftp://example.com/x");
+    assert_eq!(Card::new(&card_key_of("https://m.com/a/")).id, "09893fb7eba66489");
+}
