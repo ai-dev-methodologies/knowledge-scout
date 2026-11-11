@@ -91,6 +91,10 @@ Verify the connection: check that `plugin:ks:ks` is connected in the `/mcp` list
 
 Web research (`/ks:research`) requires a logged-in Google profile. A person logs in by running `ks auth google` directly in a terminal. It refuses to run when standard input is not a terminal, so an agent or MCP running it as an ordinary command is blocked. It cannot stop a program that runs it with a pseudo-terminal (pty) attached, so only allow the login window for commands you ran yourself.
 
+### Collection queue
+
+Add `--queue <file>` to `ks research search` to save the URLs of the results: `ks research search --engine google-browser --query "<query>" --queue <file>` appends one JSON line per result (`v`, `card_key`, `url`, `title`, `engine`, `query`, `found_at`). A `card_key` already in the file is not written again, and with `--data <data>` a page that already has a card is skipped too. The file's directory must exist, and a new file is created with mode `0600`. The engine only writes this queue: a collector that you run outside this repository reads it and fetches the page bodies. The line format and the rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md), section 9.
+
 ## Overall architecture
 
 Boxes drawn with dotted lines and a "(planned)" label are not implemented yet. Solid lines are implemented.
@@ -248,6 +252,7 @@ Only what can be confirmed in code is listed.
 - Application log (`ks record`, Redis Stream) and JSONL dump (`ks record dump`)
 - MCP server (`ks_search`, `ks_get`, `ks_record`, `ks_search_web`)
 - Google browser collection daemon: login (`ks auth google`), search (`ks research search --engine google-browser`), human-intervention events and `handoff` / `resume`, search quota and query spacing, macOS desktop notifications
+- Collection queue (`ks research search --queue <file> [--data <dir>]`): the discovered URLs are appended to a JSONL file for an outside collector to read
 - Claude Code plugin `ks` (`plugins/ks`) and marketplace manifest (`.claude-plugin/marketplace.json`): the skills `/ks:search`, `/ks:research`, `/ks:add`, plus MCP server registration. The `ks` executable is not bundled in the plugin; users install it separately, and the plugin uses the path, data directory, and Redis URL it received at install time.
 - CI: full tests on ubuntu with the Redis and Chrome gates enabled (`.github/workflows/ci.yml`)
 
@@ -255,6 +260,7 @@ Only what can be confirmed in code is listed.
 - `ks export --scope team`
 - Team sharing mode: PR and CI checks on the team repository, personal/team provenance labels
 - `google-api` and `ai-websearch` collection adapters, and a private collector adapter kept outside the repository
+- `--queue` for the MCP tool `ks_search_web` (only the CLI writes a queue for now)
 - Per-event procedure documents for human-intervention events, and a pre-push hook
 
 ## Google browser collection notice

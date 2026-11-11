@@ -4,6 +4,7 @@ pub mod card;
 pub mod collect;
 pub mod index;
 pub mod normalize;
+pub mod queue;
 pub mod validate;
 pub mod vocab;
 

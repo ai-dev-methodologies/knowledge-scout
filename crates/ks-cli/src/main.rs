@@ -3,10 +3,10 @@ mod mcp;
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use ks_core::card::{card_id, parse_kit_line, Card, Scope};
+use ks_core::card::{card_id, card_key_of, parse_kit_line, Card, Scope};
 use ks_core::collect::{collect, load_cards, md_paths, parse_queries};
 use ks_core::index::{cards_fingerprint, Application, Fingerprints, Index};
-use ks_core::normalize::{js_trim, normalize_url};
+use ks_core::normalize::js_trim;
 use ks_core::validate::validate_card;
 use ks_core::vocab::Vocab;
 use serde_json::{json, Value};
@@ -357,7 +357,7 @@ fn card_id_of(a: IdArgs) -> Result<ExitCode> {
     if source.is_empty() {
         bail!("--source must not be empty");
     }
-    let card_key = normalize_url(source).unwrap_or_else(|| format!("path:{source}"));
+    let card_key = card_key_of(source);
     print_json(&json!({"card_key": card_key, "id": card_id(&card_key)}));
     Ok(ExitCode::SUCCESS)
 }

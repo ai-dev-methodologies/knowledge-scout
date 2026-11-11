@@ -1,4 +1,5 @@
 //! Card model and its Markdown file format (YAML frontmatter + `## 요약` / `## 한계`).
+use crate::normalize::{js_trim, normalize_url};
 use crate::{vocab::Vocab, Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -63,6 +64,13 @@ pub struct Card {
     pub summary: Vec<String>,
     #[serde(skip)]
     pub limits: String,
+}
+
+/// The card_key a source gets (the kit's rule): the normalized URL, else `path:<source>`. Surrounding whitespace is
+/// dropped first, with the same trim `normalize_url` applies to a URL.
+pub fn card_key_of(source: &str) -> String {
+    let source = js_trim(source);
+    normalize_url(source).unwrap_or_else(|| format!("path:{source}"))
 }
 
 /// First 16 hex chars of sha256(card_key).
