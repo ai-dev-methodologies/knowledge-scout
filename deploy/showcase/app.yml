@@ -1,0 +1,46 @@
+# The ks remote MCP and its index job, on top of redis.yml (always use both files):
+#   docker compose --env-file <env> -p <project> -f redis.yml -f app.yml ...
+# `ks` is a static Linux binary mounted into a stock ubuntu image (no image is built). Host networking keeps Redis on
+# the loopback; the MCP server binds KS_MCP_BIND (default 127.0.0.1) and refuses a non-loopback address without a key.
+x-ks-common: &ks-common
+  image: ubuntu:24.04
+  network_mode: host
+  depends_on:
+    redis:
+      condition: service_healthy
+  environment:
+    KS_REDIS_HOST: 127.0.0.1
+    KS_REDIS_PORT: ${KS_REDIS_PORT:-6391}
+    KS_REDIS_PASSWORD: ${KS_REDIS_PASSWORD:?set KS_REDIS_PASSWORD in the env file}
+  volumes:
+    - ${KS_BIN:?set KS_BIN (path of the ks binary)}:/opt/ks/ks:ro
+    - ${KS_DATA:?set KS_DATA (card pool directory)}:/data:ro
+services:
+  # One-shot: rebuild the index from the cards. `docker compose ... run --rm ks-init`
+  ks-init:
+    <<: *ks-common
+    profiles: [tools]
+    command: ["/opt/ks/ks", "index", "rebuild", "--data", "/data", "--vocab", "/data/vocab/terms.json"]
+  ks:
+    <<: *ks-common
+    restart: unless-stopped
+    user: "${KS_UID:?set KS_UID}:${KS_GID:?set KS_GID}"
+    mem_limit: 256m
+    cpus: 1
+    # One token for the allowed Host list: an empty KS_ALLOWED_HOSTS stays a single `--allowed-host=` argument.
+    command:
+      - /opt/ks/ks
+      - mcp
+      - serve
+      - --data
+      - /data
+      - --http
+      - ${KS_MCP_BIND:-127.0.0.1}:${KS_MCP_PORT:-8790}
+      - --min-role
+      - ${KS_MIN_ROLE:-reader}
+      - --allowed-host=${KS_ALLOWED_HOSTS:-}
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/${KS_MCP_BIND:-127.0.0.1}/${KS_MCP_PORT:-8790}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

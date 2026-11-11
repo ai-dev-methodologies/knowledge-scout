@@ -1,0 +1,13 @@
+# Keyless fallback: the same server with --no-auth, loopback only (every caller is a reader).
+#   docker compose --env-file <env> -p <project> -f redis.yml -f app.yml -f app.noauth.yml up -d --wait ks
+services:
+  ks:
+    command:
+      - /opt/ks/ks
+      - mcp
+      - serve
+      - --data
+      - /data
+      - --http
+      - 127.0.0.1:${KS_MCP_PORT:-8790}
+      - --no-auth
