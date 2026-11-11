@@ -10,7 +10,7 @@ Describe a task and this tool finds **prioritized candidates** in the technical 
 │        │ MCP calls                            │
 └────────┼──────────────────────────────────────┘
          ▼
-   ks MCP server (Rust, rmcp, stdio — `ks mcp serve`)
+   ks MCP server (Rust, rmcp, stdio — `ks mcp serve`; `--http` serves only ks_search and ks_get)
      ks_search     candidate collection: vocabulary normalization → term/text matching → ranking
      ks_get        card details
      ks_record     application log (adopted, rejected, outcome)
@@ -33,7 +33,7 @@ Describe a task and this tool finds **prioritized candidates** in the technical 
 
 ## 2. Data (one card = one .md file)
 
-- **frontmatter**: `id` (the first 16 characters of the sha256 of the normalized source key `card_key`), `source_url`, `scope` (private / team), `access` (A / B / unknown), `evidence_type`, `published_at`, `collected_at`, vocabulary terms (`entities` / `techniques` / `domains`), `problems`
+- **frontmatter**: `id` (the first 16 characters of the sha256 of the normalized source key `card_key`), `source_url`, `scope` (private / team / public), `access` (A / B / unknown), `evidence_type`, `published_at`, `collected_at`, vocabulary terms (`entities` / `techniques` / `domains`), `problems`
 - **body**: a 3-line summary and the limitations
 - **source article**: kept in a personal archive outside the repository. The card records only its path and hash.
 - **export to a team (planned)**: only cards with `scope=team` and `access=A` are exported. Private fields (URL, author, etc.) are stripped.
@@ -71,7 +71,7 @@ Searches have a per-profile limit (quota). The defaults are 20 per hour and 100 
 
 The cookies of the browser profile (including the Google login session) are encrypted with an OS keychain key in both headless and headful mode. macOS uses Keychain and Linux uses libsecret/kwallet; if neither is available, Chrome's default behavior applies. Whether headless can read the cookies saved in the login window is checked automatically: after `ks auth google` closes the window, it opens the logged-in Google account page in a headless browser (`auth_check`). A profile created back when the fixed-key flags (`--password-store=basic`, `--use-mock-keychain`) were used cannot have its cookies read, so it must log in again.
 
-For the conditions and procedure for each event, see this section and the "Google login" section of the README.
+For the conditions and procedure for each event, see this section and the "Google login" section of [docs/INSTALL.md](docs/INSTALL.md).
 
 ## 5. Modes
 
