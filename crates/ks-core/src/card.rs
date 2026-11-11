@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum Scope { Private, Team }
+pub enum Scope { Private, Team, Public }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Access {

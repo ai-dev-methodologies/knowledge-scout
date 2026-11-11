@@ -1,8 +1,10 @@
 mod browser;
+mod http;
 mod mcp;
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use ks_core::auth::{KeyStore, Role};
 use ks_core::card::{card_id, card_key_of, parse_kit_line, Card, Scope};
 use ks_core::collect::{collect, load_cards, md_paths, parse_queries};
 use ks_core::index::{cards_fingerprint, Application, Fingerprints, Index};
@@ -37,6 +39,9 @@ enum Cmd {
     /// MCP server
     #[command(subcommand)]
     Mcp(McpCmd),
+    /// API keys for `ks mcp serve --http` (Redis keeps only their SHA-256 and metadata)
+    #[command(subcommand)]
+    Key(KeyCmd),
     /// Browser daemon for the google-browser engine
     #[command(subcommand)]
     Browser(browser::BrowserCmd),
@@ -73,8 +78,56 @@ enum IndexCmd {
 
 #[derive(Subcommand)]
 enum McpCmd {
-    /// Serve ks_search, ks_get, ks_record and ks_search_web over stdio
+    /// Serve ks_search, ks_get, ks_record and ks_search_web over stdio, or with --http only ks_search and ks_get over stateless HTTP
     Serve(ServeArgs),
+}
+
+#[derive(Subcommand)]
+enum KeyCmd {
+    /// Issue a key. It is printed once (or written to a new 0600 file with --out) and never stored: Redis keeps its SHA-256 and the metadata
+    #[command(visible_alias = "create")]
+    Issue(IssueArgs),
+    /// List the keys' metadata (never a key or its hash)
+    List,
+    /// Revoke a key by its id; refused from the next request on
+    Revoke {
+        id: String,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum RoleArg {
+    /// public cards only, without source fields
+    Reader,
+    /// every card, full Markdown
+    Admin,
+    /// every card, full Markdown (the pool's owner)
+    Owner,
+}
+
+impl RoleArg {
+    fn role(self) -> Role {
+        match self {
+            RoleArg::Reader => Role::Reader,
+            RoleArg::Admin => Role::Admin,
+            RoleArg::Owner => Role::Owner,
+        }
+    }
+}
+
+#[derive(Args)]
+struct IssueArgs {
+    #[arg(long, value_enum)]
+    role: RoleArg,
+    /// What the key is for (kept with the key's metadata on the operator's side)
+    #[arg(long, visible_alias = "label")]
+    purpose: String,
+    /// Who the key is for (kept with the key's metadata on the operator's side)
+    #[arg(long, visible_alias = "subject")]
+    user: String,
+    /// Write the key to this new file (mode 0600; an existing file is refused) instead of printing it
+    #[arg(long)]
+    out: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -103,6 +156,21 @@ struct ServeArgs {
     vocab: Option<PathBuf>,
     #[arg(long, value_enum, default_value = "redis")]
     backend: Backend,
+    /// Serve over stateless Streamable HTTP at <ADDR:PORT> (endpoint /mcp) with only ks_search and ks_get, for callers with a key
+    #[arg(long, value_name = "ADDR:PORT")]
+    http: Option<String>,
+    /// Also accept this Host header (repeat, or comma-separate; empty values are ignored). localhost, 127.0.0.1 and ::1 are always accepted
+    #[arg(long, value_name = "HOST", value_delimiter = ',', requires = "http")]
+    allowed_host: Vec<String>,
+    /// Accept requests with this Origin header (e.g. https://app.example:443); any other Origin is refused
+    #[arg(long, value_name = "ORIGIN", requires = "http")]
+    allowed_origin: Vec<String>,
+    /// The lowest key role served (default reader). A reader-facing pool must hold only `scope: public` cards
+    #[arg(long, value_enum, requires = "http")]
+    min_role: Option<RoleArg>,
+    /// No keys: every request is a reader. Only on a loopback address
+    #[arg(long, requires = "http")]
+    no_auth: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -169,6 +237,7 @@ enum CardCmd {
 enum ScopeArg {
     Private,
     Team,
+    Public,
 }
 
 #[derive(Args)]
@@ -228,7 +297,8 @@ fn main() -> ExitCode {
         Cmd::Search(a) => search(a),
         Cmd::Index(IndexCmd::Rebuild(a)) => rebuild(a),
         Cmd::Record(r) => record(r),
-        Cmd::Mcp(McpCmd::Serve(a)) => mcp::serve(a.data, a.vocab, a.backend).map(|()| ExitCode::SUCCESS),
+        Cmd::Mcp(McpCmd::Serve(a)) => mcp_serve(a),
+        Cmd::Key(c) => key(c),
         Cmd::Browser(c) => browser::browser(c),
         Cmd::Auth(c) => browser::auth(c),
         Cmd::Handoff { event, p } => browser::handoff(event, p),
@@ -258,6 +328,7 @@ fn import(a: ImportArgs) -> Result<ExitCode> {
     let scope = match a.scope {
         ScopeArg::Private => Scope::Private,
         ScopeArg::Team => Scope::Team,
+        ScopeArg::Public => Scope::Public,
     };
     let mut files: Vec<PathBuf> = fs::read_dir(&a.jsonl_dir)
         .with_context(|| format!("{}: cannot read directory", a.jsonl_dir.display()))?
@@ -425,5 +496,72 @@ fn record(r: RecordCmd) -> Result<ExitCode> {
     app.validate()?; // before connecting: a bad record never reaches Redis
     let id = Index::from_env()?.record(&app)?;
     print_json(&json!({"id": id}));
+    Ok(ExitCode::SUCCESS)
+}
+
+fn mcp_serve(a: ServeArgs) -> Result<ExitCode> {
+    match a.http {
+        None => mcp::serve(a.data, a.vocab, a.backend)?,
+        Some(addr) => {
+            let min_role = a.min_role.map_or(Role::Reader, RoleArg::role);
+            let opts = http::HttpOpts { addr, allowed_hosts: a.allowed_host, allowed_origins: a.allowed_origin, min_role, no_auth: a.no_auth };
+            http::serve_http(a.data, a.vocab, a.backend, opts)?
+        }
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn key(c: KeyCmd) -> Result<ExitCode> {
+    let mut store = KeyStore::from_env()?;
+    match c {
+        KeyCmd::Issue(a) => {
+            // the file first: when it cannot be created, no key is stored
+            let mut file = match &a.out {
+                Some(p) => {
+                    use std::os::unix::fs::OpenOptionsExt;
+                    let f = fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(p).map_err(|e| match e.kind() {
+                        std::io::ErrorKind::AlreadyExists => anyhow::anyhow!("{}: the file already exists; refusing to overwrite it", p.display()),
+                        _ => anyhow::anyhow!("{}: cannot create: {e}", p.display()),
+                    })?;
+                    Some((p.clone(), f))
+                }
+                None => None,
+            };
+            let (meta, key) = match store.issue(a.role.role(), &a.purpose, &a.user, &ks_browser::events::utc_now()) {
+                Ok(x) => x,
+                Err(e) => {
+                    if let Some((p, _)) = &file {
+                        let _ = fs::remove_file(p);
+                    }
+                    return Err(e.into());
+                }
+            };
+            let mut v = meta.to_json();
+            match file.as_mut() {
+                Some((p, f)) => {
+                    use std::io::Write;
+                    if let Err(e) = f.write_all(format!("{key}\n").as_bytes()).and_then(|()| f.sync_all()) {
+                        // never delivered: revoke it rather than leave a live key nobody has
+                        let _ = store.revoke(&meta.id, &ks_browser::events::utc_now());
+                        let _ = fs::remove_file(&*p);
+                        bail!("{}: cannot write the key ({e}); key {} was revoked", p.display(), meta.id);
+                    }
+                    v["out"] = json!(p.display().to_string());
+                }
+                None => {
+                    v["key"] = json!(key);
+                    eprintln!("ks key: this key is shown only once and is not stored anywhere (Redis keeps its SHA-256); hand it to its user now");
+                }
+            }
+            print_json(&v);
+        }
+        KeyCmd::List => print_json(&Value::Array(store.list()?.iter().map(|m| m.to_json()).collect())),
+        KeyCmd::Revoke { id } => {
+            if !store.revoke(&id, &ks_browser::events::utc_now())? {
+                bail!("no key with id {id}");
+            }
+            print_json(&json!({"id": id, "revoked": true}));
+        }
+    }
     Ok(ExitCode::SUCCESS)
 }
