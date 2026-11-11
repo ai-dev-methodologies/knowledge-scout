@@ -1,10 +1,12 @@
 # Redis index for knowledge-scout (required in every mode).
 # The official redis:8.x image ships the Query Engine (FT.*) and RedisJSON; `ks index rebuild` relies on both.
 # Secrets come from ./.env (gitignored): KS_REDIS_PASSWORD (required), KS_REDIS_PORT (host port, default 6379).
+# Optional, for running a second instance beside the personal one (see docs/servers.md): KS_REDIS_CONTAINER (default
+# ks-redis) and KS_REDIS_DATA (default ./.ks-data/redis). With the defaults the resolved config is unchanged.
 services:
   redis:
     image: redis:8.10.3
-    container_name: ks-redis
+    container_name: ${KS_REDIS_CONTAINER:-ks-redis}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${KS_REDIS_PORT:-6379}:6379"
@@ -27,7 +29,7 @@ services:
         } > /tmp/ks.conf
         exec redis-server /tmp/ks.conf
     volumes:
-      - ./.ks-data/redis:/data
+      - ${KS_REDIS_DATA:-./.ks-data/redis}:/data
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 5s

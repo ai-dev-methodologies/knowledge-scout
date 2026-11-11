@@ -678,7 +678,7 @@ mod tests {
 
     #[test]
     fn meta_is_written_whole_and_only_while_the_rebuild_lock_still_holds_the_token() {
-        let Some(url) = std::env::var("KS_TEST_REDIS_URL").ok().filter(|u| !u.is_empty()) else { return };
+        let Some(url) = crate::testkit::test_redis_url() else { return };
         let prefix = format!("kstest-unit-{}:", std::process::id());
         let _purge = Purge(url.clone(), prefix.clone());
         let mut idx = Index::connect(&url, &prefix).unwrap();
