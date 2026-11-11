@@ -103,7 +103,7 @@ fn parse_rejects_malformed_files() {
     assert!(Card::parse(&md.replace("scope: team", "scope: public")).is_err());
     assert!(Card::parse(&md.replace("access: A", "access: Z")).is_err());
     let stray = md.replace("## 요약\n\n", "## 요약\n\nstray prose line\n");
-    assert!(Card::parse(&stray).is_err(), "non-bullet line inside 요약");
+    assert!(Card::parse(&stray).is_err(), "non-bullet line inside the summary section");
 }
 
 #[test]
