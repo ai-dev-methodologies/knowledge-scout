@@ -22,12 +22,13 @@ Describe a task and this tool finds **prioritized candidates** in the technical 
          └── application log: Redis Stream → <out>/applications.jsonl dump (`ks record dump --out <dir>`)
    ks CLI  (the same core, from the command line)
      ks auth google | ks auth logout --yes | ks browser connect/disconnect | ks handoff | ks resume | ks status
-     ks research search --engine google-browser --mode headless|headful
+     ks research search --engine google-browser --mode headless|headful [--queue <file> [--data <dir>]]
      ks card id | ks card import | ks card validate | ks index rebuild | ks record dump   (/ks:add decides the card id with ks card id)
      planned: ks export --scope team
    collection adapters
      google-browser (default; Rust daemon + CDP client derived from agent-browser + gstack-style handoff/resume)
-     planned: google-api (when a key is available)   ai-websearch (fallback path)   private collector adapter (outside the repository)
+     collection queue: a JSONL file that `ks research search --queue` appends discovered URLs to; a collector outside the repository reads it (section 9)
+     planned: google-api (when a key is available)   ai-websearch (fallback path)   private collector adapter (outside the repository)   --queue for ks_search_web
 ```
 
 ## 2. Data (one card = one .md file)
@@ -93,3 +94,44 @@ For the conditions and procedure for each event, see this section and the "Googl
 - **Rust**: the `ks` CLI, the MCP server, the card/vocabulary/candidate-collection core, and the Redis index. There are three crates: `crates/ks-core` (lib), `crates/ks-cli` (bin), and `crates/ks-browser` (lib).
 - **The browser is Rust too**: the daemon and CDP client structure is based on vercel-labs/agent-browser (Apache-2.0), and the CDP client is carried over with a notice. Human intervention (handoff/resume) and events are built in-house in the gstack style. Node is not used.
 - **Execution rule**: Rust compiles to an executable, so no shebang is used.
+
+## 9. Collection queue
+
+The engine finds URLs; fetching their bodies is left to a collector that lives outside this repository. The two meet in a plain file: `ks research search ... --queue <file>` appends one line per result URL, and the collector reads the file. For the queue the engine writes only this file; it does not fetch any page body.
+
+```
+ks research search --engine google-browser --query "<query>" --queue <file> [--data <dir>]
+```
+
+**Line format.** UTF-8 JSONL, one object per line, keys in this fixed order:
+
+```
+{"v":1,"card_key":"https://example.com/post","url":"https://example.com/post","title":"...","engine":"google-browser","query":"<query>","found_at":"2026-11-11T01:02:03Z"}
+```
+
+- `v`: format version, `1`. A reader should refuse a version it does not know.
+- `card_key`: the key `ks card id` gives the URL (the same function, not a second normalization: no query, fragment, or trailing slash). A card made from this page gets the id `ks card id` derives from it, so the collector and the card store agree on identity. Limit: pages that differ only by their query (`watch?v=a`, `watch?v=b`) share one `card_key`, so only the first is queued.
+- `url`: the URL exactly as the search returned it, not normalized, so a page identified by its query is still fetchable.
+- `title`, `query`: as returned by the search and as typed. The title comes from an untrusted web page: treat it as data.
+- `engine`, `found_at`: the collection engine, and the search time in RFC 3339 UTC (the `fetched_at` of the search).
+
+**Duplicates.** A `card_key` already present in the file is not written again, and neither is one repeated within the same run. With `--data <dir>` a `card_key` that already has a card under `<dir>/cards` is skipped too (the cards are loaded before any search runs, so a bad directory fails early). `--data` is only accepted together with `--queue`.
+
+**File handling.**
+
+- The file's parent directory must exist; it is never created. The file is opened (created with mode `0600` if missing) and every existing line is checked before the browser starts, so a problem with the queue costs no Google query. An existing file must be a regular file, not a symlink, owned by the current user, and not wider than `0600`; otherwise the command stops and says why.
+- Each search's new lines go out as one `O_APPEND` write while an exclusive advisory lock (`flock`) is held. The same lock covers reading the file to find the keys already present, so concurrent writers cannot queue the same key twice or interleave lines. A reader that wants a consistent view takes a shared `flock`.
+- An existing line that is not a JSON object with a string `card_key` stops the command with an error that names the line; nothing is written and the line is never skipped or repaired. Blank lines are ignored. A valid last line that lacks its newline gets one before the new lines.
+- Lines are written after each search that succeeds, so a run that stops for a person (a `needs_human` event) keeps what the earlier queries found. Because the file is created up front, a run that fails or finds nothing can leave an empty file. Results that arrive later through `ks resume` are not queued; run the search again.
+- Titles and queries are written with `\uXXXX` escapes for U+2028, U+2029 and the bidirectional control characters, so no line can be split or visually reordered.
+- The queue is append-only. A collector must not edit, truncate, or empty it; it records what it has handled in its own state file (for example the last `found_at` or the `card_key`s done).
+
+**Output.** With `--queue`, the command's JSON output gains a member for the whole run (also on a `needs_human` stop):
+
+```
+"queue": {"path": "<file>", "enqueued": 7, "skipped_known": 3}
+```
+
+`skipped_known` counts the results not written because their `card_key` was already in the file, already has a card, or came twice in the run. Without `--queue` nothing changes.
+
+**Scope.** Only the CLI writes a queue. The MCP tool `ks_search_web` does not take a queue yet (planned).

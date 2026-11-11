@@ -833,3 +833,124 @@ fn logout_waits_briefly_for_a_profile_lock_that_is_being_released() {
     assert_eq!(o.status.code(), Some(0), "{}", outputs(&o));
     assert!(!prof.exists(), "the profile was not deleted");
 }
+
+/// `ks research search` with a queue, never launching a browser.
+fn search_with(home: &Path, extra: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_ks"))
+        .args(["research", "search", "--engine", "google-browser", "--query", "x"])
+        .args(extra)
+        .env("KS_HOME", home)
+        .env("KS_NOTIFY", "0")
+        .env("KS_CHROME", "/nonexistent/chrome") // never launch a browser here
+        .env("KS_BROWSER_IDLE_SECS", "1") // a daemon started by mistake goes away quickly
+        .env_remove("KS_BROWSER_DAEMON")
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn queue_option_is_documented_and_data_needs_it() {
+    let h = Home::new();
+    let o = ks(&h.0, &["research", "search", "--help"]);
+    let help = String::from_utf8_lossy(&o.stdout);
+    assert!(help.contains("--queue <QUEUE>") && help.contains("--data <DATA>"), "{help}");
+    let q = h.0.join("q.jsonl");
+    // --data alone is refused by the argument parser, before anything starts
+    let o = search_with(&h.0, &["--data", h.0.to_str().unwrap()]);
+    assert_eq!(o.status.code(), Some(2), "{}", outputs(&o));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("--queue"), "{}", outputs(&o));
+    // --queue without a value
+    assert_eq!(search_with(&h.0, &["--queue"]).status.code(), Some(2));
+    assert!(!q.exists());
+    no_daemon(&h.0);
+}
+
+#[test]
+fn queue_with_a_missing_parent_directory_fails_before_anything_starts() {
+    let h = Home::new();
+    let q = h.0.join("no-such-dir/q.jsonl");
+    let o = search_with(&h.0, &["--queue", q.to_str().unwrap()]);
+    assert_eq!(o.status.code(), Some(2), "{}", outputs(&o));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("does not exist"), "{}", outputs(&o));
+    assert!(!h.0.join("no-such-dir").exists(), "the parent directory was created");
+    no_daemon(&h.0);
+}
+
+#[test]
+fn queue_with_a_data_directory_that_has_no_cards_fails_before_anything_starts() {
+    let h = Home::new();
+    let q = h.0.join("q.jsonl");
+    let o = search_with(&h.0, &["--queue", q.to_str().unwrap(), "--data", h.0.join("no-data").to_str().unwrap()]);
+    assert_eq!(o.status.code(), Some(2), "{}", outputs(&o));
+    assert!(!q.exists());
+    no_daemon(&h.0);
+}
+
+#[test]
+fn a_search_that_stops_for_the_human_queues_nothing_and_says_so() {
+    // a profile never signed in: the search stops at AUTH_REQUIRED before any result exists
+    let h = Home::new();
+    let _stop = StopDaemonOf(h.0.clone());
+    let q = h.0.join("q.jsonl");
+    let o = search_with(&h.0, &["--queue", q.to_str().unwrap()]);
+    assert_eq!(o.status.code(), Some(3), "{}", outputs(&o));
+    let v = json(&o);
+    assert_eq!(v["event"], "AUTH_REQUIRED");
+    assert_eq!((v["queue"]["enqueued"].as_u64(), v["queue"]["skipped_known"].as_u64()), (Some(0), Some(0)), "{v}");
+    assert_eq!(v["queue"]["path"], q.to_str().unwrap());
+    // the file is created (empty, 0600) before the search, so a problem with it shows up before any Google query
+    assert_eq!(std::fs::read_to_string(&q).unwrap(), "");
+    assert_eq!(mode(&q), 0o600);
+    // without --queue the output has no queue member
+    let o = search_with(&h.0, &[]);
+    assert_eq!(o.status.code(), Some(3), "{}", outputs(&o));
+    assert!(json(&o).get("queue").is_none());
+}
+
+#[test]
+fn a_queue_file_that_cannot_be_used_fails_before_anything_starts() {
+    let h = Home::new();
+    let ks_q = |q: &Path| search_with(&h.0, &["--queue", q.to_str().unwrap()]);
+
+    // a broken existing line: named, and the file is left as it was
+    let broken = h.0.join("broken.jsonl");
+    std::fs::write(&broken, "{\"v\":1,\"card_key\":\"a\"}\nnot json\n").unwrap();
+    std::fs::set_permissions(&broken, std::fs::Permissions::from_mode(0o600)).unwrap();
+    let o = ks_q(&broken);
+    assert_eq!(o.status.code(), Some(2), "{}", outputs(&o));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("line 2"), "{}", outputs(&o));
+    assert_eq!(std::fs::read_to_string(&broken).unwrap(), "{\"v\":1,\"card_key\":\"a\"}\nnot json\n");
+
+    // a directory, a symlink, a file open to others
+    let dir = h.0.join("a-dir");
+    std::fs::create_dir(&dir).unwrap();
+    let real = h.0.join("real.jsonl");
+    std::fs::write(&real, "").unwrap();
+    std::fs::set_permissions(&real, std::fs::Permissions::from_mode(0o600)).unwrap();
+    let link = h.0.join("link.jsonl");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    let open = h.0.join("open.jsonl");
+    std::fs::write(&open, "").unwrap();
+    std::fs::set_permissions(&open, std::fs::Permissions::from_mode(0o644)).unwrap();
+    for (q, why) in [(&dir, "not a regular file"), (&link, "symlink"), (&open, "wider than 0600")] {
+        let o = ks_q(q);
+        assert_eq!(o.status.code(), Some(2), "{why}: {}", outputs(&o));
+        assert!(String::from_utf8_lossy(&o.stderr).contains(why), "{why}: {}", outputs(&o));
+    }
+    assert_eq!(std::fs::read_to_string(&real).unwrap(), "");
+    no_daemon(&h.0);
+}
+
+#[test]
+fn a_data_directory_with_an_unreadable_card_fails_before_anything_starts() {
+    let h = Home::new();
+    let data = h.0.join("data");
+    std::fs::create_dir_all(data.join("cards/topic")).unwrap();
+    std::fs::write(data.join("cards/topic/bad.md"), "this is not a card").unwrap();
+    let q = h.0.join("q.jsonl");
+    let o = search_with(&h.0, &["--queue", q.to_str().unwrap(), "--data", data.to_str().unwrap()]);
+    assert_eq!(o.status.code(), Some(2), "{}", outputs(&o));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("bad.md"), "{}", outputs(&o));
+    assert!(!q.exists());
+    no_daemon(&h.0);
+}

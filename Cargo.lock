@@ -799,6 +799,7 @@ name = "ks-core"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "libc",
  "redis",
  "regex",
  "serde",
