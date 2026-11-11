@@ -1,6 +1,6 @@
 {
   "name": "ks",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "knowledge-scout: search a private technical knowledge-card pool with A/B/C judging, run low-frequency web research, and add cards",
   "author": { "name": "ai-dev-methodologies", "url": "https://github.com/ai-dev-methodologies" },
   "license": "Apache-2.0",
