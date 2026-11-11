@@ -1,0 +1,12 @@
+[
+  {"qid": "G01", "kind": "keyword", "query": "circuit breaker and retry for flaky remote calls", "terms": ["circuit-breaker", "retry"], "expect": ["9e0833b639e7e070", "1abc9c2678642e48"], "top": 3},
+  {"qid": "G02", "kind": "keyword", "query": "roll back a bad Kubernetes release", "terms": ["kubernetes", "rollback"], "expect": ["cb6952ad5a8ac8a3"], "top": 3},
+  {"qid": "G03", "kind": "keyword", "query": "SQLite write-ahead log mode", "terms": ["sqlite", "wal"], "expect": ["05cae033cedcdc82"], "top": 3},
+  {"qid": "G04", "kind": "keyword", "query": "follow one request across services with OpenTelemetry", "terms": ["opentelemetry", "distributed-tracing"], "expect": ["3c666e80b3b537c0"], "top": 3},
+  {"qid": "G05", "kind": "keyword", "query": "write unit tests in Rust", "terms": ["rust", "unit-testing"], "expect": ["9033d86b9e3ffabf", "f67c0241851b48ae"], "top": 3},
+  {"qid": "G06", "kind": "natural", "query": "도커 이미지 크기 줄이는 멀티스테이지 빌드", "expect": ["1f1da92eed2fb19a"], "top": 3},
+  {"qid": "G07", "kind": "natural", "query": "컨테이너 헬스체크 프로브 재시작", "expect": ["327d972d153b16e4"], "top": 3},
+  {"qid": "G08", "kind": "natural", "query": "알림 피로 줄이는 기준", "expect": ["f9ec21bf79ff1a39"], "top": 3},
+  {"qid": "G09", "kind": "natural", "query": "실행 계획 비용 추정 EXPLAIN", "expect": ["5c67bfcbc56763a8"], "top": 3},
+  {"qid": "G10", "kind": "natural", "query": "에이전트 완료 주장 독립 검증", "expect": ["a878c79c451ad4cc"], "top": 3}
+]
