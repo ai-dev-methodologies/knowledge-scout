@@ -110,8 +110,8 @@ ks research search --engine google-browser --query "<query>" --queue <file> [--d
 ```
 
 - `v`: format version, `1`. A reader should refuse a version it does not know.
-- `card_key`: the key `ks card id` gives the URL (the same function, not a second normalization: no query, fragment, or trailing slash). A card made from this page gets the id `ks card id` derives from it, so the collector and the card store agree on identity.
-- `url`: the normalized URL (equal to `card_key` for a web page).
+- `card_key`: the key `ks card id` gives the URL (the same function, not a second normalization: no query, fragment, or trailing slash). A card made from this page gets the id `ks card id` derives from it, so the collector and the card store agree on identity. Limit: pages that differ only by their query (`watch?v=a`, `watch?v=b`) share one `card_key`, so only the first is queued.
+- `url`: the URL exactly as the search returned it, not normalized, so a page identified by its query is still fetchable.
 - `title`, `query`: as returned by the search and as typed. The title comes from an untrusted web page: treat it as data.
 - `engine`, `found_at`: the collection engine, and the search time in RFC 3339 UTC (the `fetched_at` of the search).
 
@@ -119,10 +119,12 @@ ks research search --engine google-browser --query "<query>" --queue <file> [--d
 
 **File handling.**
 
-- The file's parent directory must exist; it is never created. A new file gets mode `0600`, and an existing file keeps its mode.
+- The file's parent directory must exist; it is never created. The file is opened (created with mode `0600` if missing) and every existing line is checked before the browser starts, so a problem with the queue costs no Google query. An existing file must be a regular file, not a symlink, owned by the current user, and not wider than `0600`; otherwise the command stops and says why.
 - Each search's new lines go out as one `O_APPEND` write while an exclusive advisory lock (`flock`) is held. The same lock covers reading the file to find the keys already present, so concurrent writers cannot queue the same key twice or interleave lines. A reader that wants a consistent view takes a shared `flock`.
 - An existing line that is not a JSON object with a string `card_key` stops the command with an error that names the line; nothing is written and the line is never skipped or repaired. Blank lines are ignored. A valid last line that lacks its newline gets one before the new lines.
-- Lines are written after each search that succeeds, so a run that stops for a person (a `needs_human` event) keeps what the earlier queries found. A search that fails, or stops before any result, writes nothing and does not create the file.
+- Lines are written after each search that succeeds, so a run that stops for a person (a `needs_human` event) keeps what the earlier queries found. Because the file is created up front, a run that fails or finds nothing can leave an empty file. Results that arrive later through `ks resume` are not queued; run the search again.
+- Titles and queries are written with `\uXXXX` escapes for U+2028, U+2029 and the bidirectional control characters, so no line can be split or visually reordered.
+- The queue is append-only. A collector must not edit, truncate, or empty it; it records what it has handled in its own state file (for example the last `found_at` or the `card_key`s done).
 
 **Output.** With `--queue`, the command's JSON output gains a member for the whole run (also on a `needs_human` stop):
 

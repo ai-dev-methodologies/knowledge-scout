@@ -7,8 +7,9 @@ use crate::{Error, Result};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashSet;
+use std::fs::File;
 use std::io::{Read, Write};
-use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
@@ -49,7 +50,18 @@ impl QueueEntry {
     /// The JSON line, without the trailing newline (JSON escapes any newline inside a field).
     pub fn to_line(&self) -> String {
         let l = Line { v: 1, card_key: &self.card_key, url: &self.url, title: &self.title, engine: &self.engine, query: &self.query, found_at: &self.found_at };
-        serde_json::to_string(&l).expect("a struct of strings serializes")
+        let json = serde_json::to_string(&l).expect("a struct of strings serializes");
+        // serde_json writes these raw; as JSON escapes they cannot split a line in a reader that treats U+2028/2029 as
+        // line ends, or reorder the text when a title is displayed
+        let mut out = String::with_capacity(json.len());
+        for c in json.chars() {
+            if matches!(c, '\u{2028}' | '\u{2029}' | '\u{61c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}') {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            } else {
+                out.push(c);
+            }
+        }
+        out
     }
 }
 
@@ -88,13 +100,39 @@ fn keys_in(text: &str, path: &Path) -> Result<HashSet<String>> {
     Ok(keys)
 }
 
-/// Append the entries whose card_key is neither in the file nor in `known` (the card_keys that already have a card),
-/// as one write under an exclusive flock. The file is created with mode 0600 (an existing file keeps its mode).
-pub fn enqueue(path: &Path, entries: &[QueueEntry], known: &HashSet<String>) -> Result<Enqueued> {
+/// Open the queue file (creating it with mode 0600 if it is missing), refuse one that is not safe to append to, take an
+/// exclusive flock (released when the file is dropped) and check every existing line. Returns the file, its text and the
+/// card_keys in it.
+fn open_locked(path: &Path) -> Result<(File, String, HashSet<String>)> {
     check_parent(path)?;
     let io = |e: std::io::Error| Error::msg(format!("{}: {e}", path.display()));
-    let mut f = std::fs::OpenOptions::new().read(true).append(true).create(true).mode(0o600).open(path).map_err(io)?;
-    // blocks until another writer is done; released when `f` is dropped
+    if let Ok(md) = std::fs::symlink_metadata(path) {
+        if md.file_type().is_symlink() {
+            return Err(Error::msg(format!("{}: is a symlink; refusing to write through it", path.display())));
+        }
+        if !md.is_file() {
+            return Err(Error::msg(format!("{}: not a regular file", path.display())));
+        }
+    }
+    // O_NOFOLLOW: a link swapped in after this check still cannot be followed
+    let mut f = std::fs::OpenOptions::new().read(true).append(true).create(true).mode(0o600).custom_flags(libc::O_NOFOLLOW).open(path).map_err(|e| {
+        if e.raw_os_error() == Some(libc::ELOOP) {
+            Error::msg(format!("{}: is a symlink; refusing to write through it", path.display()))
+        } else {
+            io(e)
+        }
+    })?;
+    let md = f.metadata().map_err(io)?;
+    if !md.is_file() {
+        return Err(Error::msg(format!("{}: not a regular file", path.display())));
+    }
+    if md.uid() != unsafe { libc::geteuid() } {
+        return Err(Error::msg(format!("{}: owned by another user (uid {}); refusing to use it as a queue", path.display(), md.uid())));
+    }
+    if md.mode() & 0o177 != 0 {
+        return Err(Error::msg(format!("{}: mode {:o} is wider than 0600; run chmod 600 on it, or use another file", path.display(), md.mode() & 0o7777)));
+    }
+    // blocks until another writer is done
     while unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX) } != 0 {
         let e = std::io::Error::last_os_error();
         if e.kind() != std::io::ErrorKind::Interrupted {
@@ -104,7 +142,16 @@ pub fn enqueue(path: &Path, entries: &[QueueEntry], known: &HashSet<String>) -> 
     let mut bytes = Vec::new();
     f.read_to_end(&mut bytes).map_err(io)?;
     let text = String::from_utf8(bytes).map_err(|_| Error::msg(format!("{}: not valid UTF-8; nothing was written", path.display())))?;
-    let mut seen = keys_in(&text, path)?;
+    let keys = keys_in(&text, path)?;
+    Ok((f, text, keys))
+}
+
+/// Append the entries whose card_key is neither in the file nor in `known` (the card_keys that already have a card),
+/// as one write under an exclusive flock. The file is created with mode 0600; an existing one must be a regular file of
+/// ours that is not open to others.
+pub fn enqueue(path: &Path, entries: &[QueueEntry], known: &HashSet<String>) -> Result<Enqueued> {
+    let (mut f, text, mut seen) = open_locked(path)?;
+    let io = |e: std::io::Error| Error::msg(format!("{}: {e}", path.display()));
 
     let mut out = String::new();
     let (mut enqueued, mut skipped_known) = (0, 0);
@@ -134,8 +181,10 @@ pub fn entries_from_results(query: &str, results: &Value) -> Result<Vec<QueueEnt
         .map(|r| {
             let field = |k: &str| r.get(k).and_then(Value::as_str).ok_or_else(|| Error::msg(format!("search result has no string {k}: {r}")));
             let raw = field("url")?;
-            let url = normalize_url(raw).ok_or_else(|| Error::msg(format!("search result url is not an http(s) URL: {raw:?}")))?;
-            Ok(QueueEntry::new(&card_key_of(&url), &url, field("title")?, field("engine")?, query, field("fetched_at")?))
+            // the key identifies the page for dedupe; `url` stays what the search returned, since some pages are
+            // identified by their query (watch?v=..)
+            let normalized = normalize_url(raw).ok_or_else(|| Error::msg(format!("search result url is not an http(s) URL: {raw:?}")))?;
+            Ok(QueueEntry::new(&card_key_of(&normalized), raw, field("title")?, field("engine")?, query, field("fetched_at")?))
         })
         .collect()
 }
@@ -153,9 +202,10 @@ pub struct QueueWriter {
 }
 
 impl QueueWriter {
-    /// Fails now if the file's parent directory is missing, so no search runs for nothing.
+    /// Opens the queue file now (creating it, mode 0600, if missing) and checks it and every line in it, so a problem
+    /// with the queue is found before a search spends a Google query.
     pub fn new(path: &Path, known: HashSet<String>) -> Result<QueueWriter> {
-        check_parent(path)?;
+        open_locked(path)?;
         Ok(QueueWriter { path: path.to_path_buf(), known, total: Enqueued { enqueued: 0, skipped_known: 0 } })
     }
 

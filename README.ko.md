@@ -93,7 +93,7 @@ Redis URL은 비밀번호를 포함하므로 OS 자격 증명 저장소에 저�
 
 ### 수집 큐
 
-`ks research search`에 `--queue <파일>`을 붙이면 결과 URL을 파일에 모읍니다. `ks research search --engine google-browser --query "<질의>" --queue <파일>`은 결과마다 JSON 한 줄(`v`, `card_key`, `url`, `title`, `engine`, `query`, `found_at`)을 덧붙입니다. 이미 파일에 있는 `card_key`는 다시 쓰지 않고, `--data <data>`를 함께 주면 이미 카드가 있는 페이지도 건너뜁니다. 파일이 들어갈 디렉터리는 미리 있어야 하며, 새 파일은 권한 `0600`으로 만듭니다. 엔진은 이 큐를 쓰기만 합니다. 이 저장소 밖에서 직접 돌리는 수집기가 큐를 읽어 본문을 가져옵니다. 줄 형식과 규칙은 [`ARCHITECTURE.md`](ARCHITECTURE.md)(영문) 9절에 있습니다.
+`ks research search`에 `--queue <파일>`을 붙이면 결과 URL을 파일에 모읍니다. `ks research search --engine google-browser --query "<질의>" --queue <파일>`은 결과마다 JSON 한 줄(`v`, `card_key`, `url`, `title`, `engine`, `query`, `found_at`)을 덧붙입니다. 이미 파일에 있는 `card_key`는 다시 쓰지 않고, `--data <data>`를 함께 주면 이미 카드가 있는 페이지도 건너뜁니다. 파일이 들어갈 디렉터리는 미리 있어야 하며, 새 파일은 권한 `0600`으로 만듭니다. 엔진은 이 큐를 쓰기만 합니다. 이 저장소 밖에서 직접 돌리는 수집기가 큐를 읽어 본문을 가져옵니다. 큐는 덧붙이기 전용입니다. 수집기는 큐를 고치거나 비우지 말고, 처리한 항목은 자기 상태 파일에 따로 기록해야 합니다. 파일은 검색 전에 만들어지므로 검색 결과가 0건이어도 빈 파일이 남을 수 있고, `ks resume`으로 이어진 결과는 큐에 들어가지 않습니다. 줄 형식과 규칙은 [`ARCHITECTURE.md`](ARCHITECTURE.md)(영문) 9절에 있습니다.
 
 ## 전체 아키텍처
 

@@ -93,7 +93,7 @@ Web research (`/ks:research`) requires a logged-in Google profile. A person logs
 
 ### Collection queue
 
-Add `--queue <file>` to `ks research search` to save the URLs of the results: `ks research search --engine google-browser --query "<query>" --queue <file>` appends one JSON line per result (`v`, `card_key`, `url`, `title`, `engine`, `query`, `found_at`). A `card_key` already in the file is not written again, and with `--data <data>` a page that already has a card is skipped too. The file's directory must exist, and a new file is created with mode `0600`. The engine only writes this queue: a collector that you run outside this repository reads it and fetches the page bodies. The line format and the rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md), section 9.
+Add `--queue <file>` to `ks research search` to save the URLs of the results: `ks research search --engine google-browser --query "<query>" --queue <file>` appends one JSON line per result (`v`, `card_key`, `url`, `title`, `engine`, `query`, `found_at`). A `card_key` already in the file is not written again, and with `--data <data>` a page that already has a card is skipped too. The file's directory must exist, and a new file is created with mode `0600`. The engine only writes this queue: a collector that you run outside this repository reads it and fetches the page bodies. The queue is append-only: the collector should not edit or empty it, but record what it has handled in its own state file. The file is created before the search, so it can exist (empty) even when a search finds nothing, and results that arrive later through `ks resume` are not queued. The line format and the rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md), section 9.
 
 ## Overall architecture
 
