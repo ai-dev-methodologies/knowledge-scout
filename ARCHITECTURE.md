@@ -71,7 +71,7 @@ Searches have a per-profile limit (quota). The defaults are 20 per hour and 100 
 
 The cookies of the browser profile (including the Google login session) are encrypted with an OS keychain key in both headless and headful mode. macOS uses Keychain and Linux uses libsecret/kwallet; if neither is available, Chrome's default behavior applies. Whether headless can read the cookies saved in the login window is checked automatically: after `ks auth google` closes the window, it opens the logged-in Google account page in a headless browser (`auth_check`). A profile created back when the fixed-key flags (`--password-store=basic`, `--use-mock-keychain`) were used cannot have its cookies read, so it must log in again.
 
-For the conditions and procedure for each event, see this section and the "Google login" section of the README.
+For the conditions and procedure for each event, see this section and the "Google login" section of [docs/INSTALL.md](docs/INSTALL.md).
 
 ## 5. Modes
 
