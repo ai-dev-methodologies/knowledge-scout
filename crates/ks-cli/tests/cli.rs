@@ -607,3 +607,12 @@ fn card_id_trims_surrounding_whitespace_of_a_source_that_is_not_a_url() {
         assert_eq!(v["id"], ks_core::card::card_id(key), "{source:?}");
     }
 }
+
+#[test]
+fn ks_version_prints_name_and_version() {
+    for flag in ["--version", "-V"] {
+        let o = ks(&[&flag]);
+        assert!(o.status.success(), "{flag}: {}", err(&o));
+        assert_eq!(out(&o), format!("ks {}\n", env!("CARGO_PKG_VERSION")));
+    }
+}
