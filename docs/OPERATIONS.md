@@ -122,7 +122,7 @@ Login-type events (`AUTH_REQUIRED`, `AUTH_EXPIRED`, `MFA_PROMPT`) are cleared by
 | Component | Role |
 | --- | --- |
 | `crates/ks-core` (lib) | Card model and Markdown format, vocabulary and term normalization, card validation, candidate collection and ranking, Redis index and application log |
-| `crates/ks-cli` (bin `ks`) | Command-line tool and MCP server (`ks mcp serve`, stdio). The tools are `ks_search`, `ks_get`, `ks_record`, and `ks_search_web`. The browser-related commands (`browser`, `auth`, `handoff`, `resume`, `status`, `research search`) are thin wrappers that call the daemon |
+| `crates/ks-cli` (bin `ks`) | Command-line tool and MCP server (`ks mcp serve`, stdio; with `--http` only `ks_search` and `ks_get`, see REMOTE-MCP.md). The stdio tools are `ks_search`, `ks_get`, `ks_record`, and `ks_search_web`. The browser-related commands (`browser`, `auth`, `handoff`, `resume`, `status`, `research search`) are thin wrappers that call the daemon |
 | `crates/ks-browser` (lib) | Per-profile browser daemon, CDP client, human-intervention detection, results page parsing, search quota, event log and notifications. Part of the CDP client was taken from agent-browser (Apache-2.0) and modified; its origin is recorded in `NOTICE` |
 | `docker-compose.yml` | Local Redis (open only on `127.0.0.1`, password required). Loads the Query Engine and RedisJSON modules for the index |
 

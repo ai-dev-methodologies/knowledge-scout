@@ -2,7 +2,7 @@
 
 [README](../README.md) | English
 
-**Status: defined for v0.2.0, not implemented in the code yet.** This page follows the v0.2.0 plan. Command names and flags can still change before the release; check `ks --help` once it ships. Today the MCP server only runs over stdio on your own machine (see [INSTALL](INSTALL.md)).
+**Status: implemented in v0.2.0.** The commands and flags below match `ks key --help` and `ks mcp serve --help`. Without `--http`, the MCP server still runs over stdio on your own machine (see [INSTALL](INSTALL.md)).
 
 ## What it is
 
@@ -23,8 +23,8 @@ A small HTTP mode of the same `ks` engine, so that a person who is not on the ma
 
 ```bash
 # issue a key; the raw key goes only into the file (mode 0600, refuses to overwrite), stdout shows its id
-ks key create --role reader --label <purpose> --subject <who> --out <file>
-ks key list              # ids, roles, labels; never the key or its hash
+ks key issue --role reader --purpose <purpose> --user <who> --out <file>
+ks key list              # ids, roles, purposes; never the key or its hash
 ks key revoke <id>       # takes effect on the next request
 
 ks mcp serve --data <data> --http 127.0.0.1:8790 --min-role reader

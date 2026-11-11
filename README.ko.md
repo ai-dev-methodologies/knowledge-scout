@@ -59,7 +59,7 @@ flowchart LR
 <!-- s:quickstart -->
 ## 빠른 시작
 
-작은 공개 샘플 카드로 먼저 써 볼 수 있습니다(v0.2.0, 아직 공개 전). 지금 내 카드로 쓰려면 다음과 같이 합니다.
+`examples/sample-data`의 작은 공개 샘플 카드(17장, 골든 질의 10개)로 먼저 써 볼 수 있습니다. Redis를 띄운 뒤 `ks index rebuild --data examples/sample-data`로 색인하고, `ks search --data examples/sample-data --vocab examples/sample-data/vocab/terms.json --queries examples/sample-data/queries.json --out <out.json>`으로 검색합니다. 내 카드로 쓰려면 다음과 같이 합니다.
 
 1. Redis를 띄우고 `ks`와 Claude Code plugin을 설치합니다. 절차는 [docs/ko/INSTALL.md](docs/ko/INSTALL.md)에 있습니다.
 2. 카드를 비공개 디렉터리에 두고 `ks card validate --data <data>`와 `ks index rebuild --data <data>`를 실행합니다.
@@ -104,10 +104,10 @@ flowchart LR
 <!-- s:remote -->
 ## 원격 MCP (v0.2.0)
 
-v0.2.0 범위로 계획한 것이며 아직 구현되지 않았습니다. 운영자가 발급한 키로, 다른 사람이 자기 Claude Code에서 내 카드를 검색하게 합니다.
+운영자가 발급한 키로, 다른 사람이 자기 Claude Code에서 내 카드를 검색하게 합니다.
 
 - **검색만 합니다.** 원격 서버는 `ks_search`와 `ks_get`만 제공합니다. 웹 검색, 기록, 수집, 카드 만들기, 색인은 운영자만 합니다.
-- **키.** 운영자가 `ks key create`로 키를 발급하고, Redis에는 키의 해시만 저장합니다. 역할은 `reader`(공개 카드와 정해진 필드만), `admin`과 `owner`(카드 전체)입니다.
+- **키.** 운영자가 `ks key issue`로 키를 발급하고, Redis에는 키의 해시만 저장합니다. 역할은 `reader`(공개 카드와 정해진 필드만), `admin`과 `owner`(카드 전체)입니다.
 - **기본은 닫혀 있습니다.** 유효한 키 없이는 loopback이 아닌 주소에서 서버가 열리지 않고, Host와 Origin을 검사합니다.
 - **연결.** SSH 터널을 연 뒤, `http://127.0.0.1:8790/mcp`에 `Authorization: Bearer <키>` 헤더로 HTTP MCP 서버를 추가합니다.
 
@@ -116,7 +116,7 @@ v0.2.0 범위로 계획한 것이며 아직 구현되지 않았습니다. 운영
 <!-- s:status -->
 ## 상태
 
-0.1.0은 macOS에서 Redis, `ks` CLI, Claude Code plugin으로 동작합니다. Linux는 CI 시험은 통과하지만 실사용은 확인하지 못했고, Windows는 지원하지 않습니다. 수집 큐는 들어 있고, 원격 MCP, 샘플 풀, `ks export --scope team`은 아직 없습니다. [CHANGELOG.md](CHANGELOG.md)(영문)를 보세요.
+v0.2.0 릴리스 후보는 macOS에서 Redis, `ks` CLI, Claude Code plugin으로 동작합니다. Linux는 CI 시험은 통과하지만 실사용은 확인하지 못했고, Windows는 지원하지 않습니다. 수집 큐, HTTP 원격 MCP(검색만, API 키), 샘플 풀은 들어 있고 `ks export --scope team`은 아직 없습니다. [CHANGELOG.md](CHANGELOG.md)(영문)를 보세요.
 
 <!-- s:google -->
 ## Google 브라우저 수집 주의

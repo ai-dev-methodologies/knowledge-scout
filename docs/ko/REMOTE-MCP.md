@@ -2,7 +2,7 @@
 
 [README](../../README.ko.md) | [English](../REMOTE-MCP.md)
 
-**상태: v0.2.0 범위로 정의됐고, 코드에는 아직 구현되지 않았습니다.** 이 문서는 v0.2.0 계획을 따릅니다. 명령과 옵션 이름은 릴리스 전에 바뀔 수 있으니, 배포되면 `ks --help`로 확인하세요. 지금의 MCP 서버는 내 컴퓨터에서 stdio로만 동작합니다([설치](INSTALL.md) 참고).
+**상태: v0.2.0에 구현됐습니다.** 아래 명령과 옵션은 `ks key --help`, `ks mcp serve --help`와 일치합니다. `--http` 없이는 MCP 서버가 내 컴퓨터에서 stdio로만 동작합니다([설치](INSTALL.md) 참고).
 
 ## 무엇인가
 
@@ -23,7 +23,7 @@
 
 ```bash
 # 키 발급. 키 원문은 파일에만 쓰고(권한 0600, 이미 있으면 거부), 화면에는 id만 나옵니다
-ks key create --role reader --label <목적> --subject <사용자 표시> --out <파일>
+ks key issue --role reader --purpose <목적> --user <사용자 표시> --out <파일>
 ks key list              # id, 역할, 목적. 키와 해시는 보여 주지 않습니다
 ks key revoke <id>       # 다음 요청부터 바로 적용됩니다
 

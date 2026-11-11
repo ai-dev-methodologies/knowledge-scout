@@ -122,7 +122,7 @@ flowchart TB
 | 구성 요소 | 역할 |
 | --- | --- |
 | `crates/ks-core` (lib) | 카드 모델과 Markdown 형식, 어휘 사전과 용어 정규화, 카드 검증, 후보 수집과 정렬, Redis 색인과 적용 기록 |
-| `crates/ks-cli` (bin `ks`) | 명령행 도구와 MCP 서버(`ks mcp serve`, stdio). 도구는 `ks_search`, `ks_get`, `ks_record`, `ks_search_web`. 브라우저 관련 명령(`browser`, `auth`, `handoff`, `resume`, `status`, `research search`)은 데몬을 부르는 얇은 래퍼 |
+| `crates/ks-cli` (bin `ks`) | 명령행 도구와 MCP 서버(`ks mcp serve`, stdio. `--http`이면 `ks_search`와 `ks_get`만, REMOTE-MCP.md 참고). stdio 도구는 `ks_search`, `ks_get`, `ks_record`, `ks_search_web`. 브라우저 관련 명령(`browser`, `auth`, `handoff`, `resume`, `status`, `research search`)은 데몬을 부르는 얇은 래퍼 |
 | `crates/ks-browser` (lib) | 프로필별 브라우저 데몬, CDP 클라이언트, 사람 개입 감지, 결과 페이지 파싱, 검색 쿼터, 이벤트 기록과 알림. CDP 클라이언트 일부는 agent-browser(Apache-2.0)에서 가져와 고쳤고 출처는 `NOTICE`에 있음 |
 | `docker-compose.yml` | 로컬 Redis(`127.0.0.1`에만 열림, 비밀번호 필수). 색인용으로 Query Engine과 RedisJSON 모듈을 올림 |
 

@@ -59,7 +59,7 @@ It does not fit, or is limited, when:
 <!-- s:quickstart -->
 ## Quick start
 
-Try it on a small public sample card set (v0.2.0; not published yet). To use your own cards today:
+Try it on the small public sample card set in `examples/sample-data` (17 cards, 10 golden queries): start Redis, then run `ks index rebuild --data examples/sample-data` and search it with `ks search --data examples/sample-data --vocab examples/sample-data/vocab/terms.json --queries examples/sample-data/queries.json --out <out.json>`. To use your own cards:
 
 1. Start Redis and install `ks` and the Claude Code plugin. Steps are in [docs/INSTALL.md](docs/INSTALL.md).
 2. Put your cards in a private directory, then run `ks card validate --data <data>` and `ks index rebuild --data <data>`.
@@ -104,10 +104,10 @@ Most are vendor tests or small studies; read them as hints, and measure on your 
 <!-- s:remote -->
 ## Remote MCP (v0.2.0)
 
-Planned for v0.2.0 and not implemented yet. It lets someone search your cards from their own Claude Code with a key you issue.
+It lets someone search your cards from their own Claude Code with a key you issue.
 
 - **Search only.** The remote server offers `ks_search` and `ks_get`. Web search, recording, collection, card creation, and indexing stay with the operator.
-- **Keys.** The operator issues keys with `ks key create`; Redis stores only a hash of each. Roles: `reader` sees public cards and a fixed list of fields, `admin` and `owner` see full cards.
+- **Keys.** The operator issues keys with `ks key issue`; Redis stores only a hash of each. Roles: `reader` sees public cards and a fixed list of fields, `admin` and `owner` see full cards.
 - **Closed by default.** The server will not listen on a non-loopback address without a valid key, and it checks Host and Origin.
 - **Connect.** Open an SSH tunnel, then add an HTTP MCP server at `http://127.0.0.1:8790/mcp` with `Authorization: Bearer <key>`.
 
@@ -116,7 +116,7 @@ Details: [docs/REMOTE-MCP.md](docs/REMOTE-MCP.md).
 <!-- s:status -->
 ## Status
 
-Version 0.1.0 works on macOS, with Redis, the `ks` CLI, and the Claude Code plugin. On Linux the tests pass in CI, but real use is unverified; Windows is not supported. The collection queue is in place; remote MCP, the sample pool, and `ks export --scope team` are not. See [CHANGELOG.md](CHANGELOG.md).
+The v0.2.0 release candidate works on macOS, with Redis, the `ks` CLI, and the Claude Code plugin. On Linux the tests pass in CI, but real use is unverified; Windows is not supported. The collection queue, remote MCP over HTTP (search only, API keys) and the sample pool are in place; `ks export --scope team` is not. See [CHANGELOG.md](CHANGELOG.md).
 
 <!-- s:google -->
 ## Google browser collection notice

@@ -6,7 +6,7 @@
 
 - **Public**: the engine code in this repository (`ks-core`, `ks-cli`, `ks-browser`).
 - **Private**: card `.md` files, source articles, browser profiles (login cookies), and the application log are not kept in this repository; they live in each user's own data directory. Cards use the user's private git repository as the source of truth. A card records only the path and hash of its source article.
-- **Personal vs. team**: separated by the card frontmatter fields `scope` (`private` / `team`) and `access` (`A` / `B` / `unknown`). By design, the only cards shared with a team are those with `scope=team` and `access=A`, and private fields such as URL and author are stripped. The export command (`ks export`) and the PR/CI process of the team repository do not exist yet (planned). For now, only recording the two fields on the card is implemented.
+- **Personal vs. team**: separated by the card frontmatter fields `scope` (`private` / `team` / `public`) and `access` (`A` / `B` / `unknown`). By design, the only cards shared with a team are those with `scope=team` and `access=A`, and private fields such as URL and author are stripped. The export command (`ks export`) and the PR/CI process of the team repository do not exist yet (planned). For now, only recording the two fields on the card is implemented.
 
 ## Security design summary
 
