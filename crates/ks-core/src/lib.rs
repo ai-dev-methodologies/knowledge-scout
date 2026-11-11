@@ -5,6 +5,7 @@ pub mod collect;
 pub mod index;
 pub mod normalize;
 pub mod queue;
+pub mod testkit;
 pub mod validate;
 pub mod vocab;
 
