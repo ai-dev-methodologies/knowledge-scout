@@ -1,0 +1,24 @@
+# Override for the dev/sample/test Redis that runs beside the personal one (docker-compose.yml + this file):
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml -p ks-test --env-file ~/.ks/test/redis.env up -d --wait
+# The env file sets KS_REDIS_PASSWORD, KS_REDIS_PORT=6391, KS_REDIS_CONTAINER=ks-test-redis, KS_REDIS_DATA.
+# Small footprint: 128 MB maxmemory (256 MB container cap, 0.5 CPU) and no persistence (the index is rebuilt from cards).
+# Keep the loadmodule line identical to docker-compose.yml: the search settings are checked by `ks` at search time.
+services:
+  redis:
+    mem_limit: 256m
+    cpus: 0.5
+    command:
+      - sh
+      - -c
+      - |
+        umask 077
+        {
+          printf 'requirepass %s\n' "$$REDIS_PASSWORD"
+          echo 'appendonly no'
+          echo 'save ""'
+          echo 'maxmemory 128mb'
+          echo 'maxmemory-policy noeviction'
+          echo 'loadmodule /usr/local/lib/redis/modules/redisearch.so MAXPREFIXEXPANSIONS 1000000000 TIMEOUT 10000 ON_TIMEOUT FAIL'
+          echo 'loadmodule /usr/local/lib/redis/modules/rejson.so'
+        } > /tmp/ks.conf
+        exec redis-server /tmp/ks.conf

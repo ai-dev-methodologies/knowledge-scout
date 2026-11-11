@@ -140,7 +140,7 @@ static REDIS_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 struct Env { url: String, prefix: String, tmp: PathBuf, _serial: std::sync::MutexGuard<'static, ()> }
 impl Env {
     fn new() -> Option<Env> {
-        let url = std::env::var("KS_TEST_REDIS_URL").ok().filter(|u| !u.is_empty())?;
+        let url = ks_core::testkit::test_redis_url()?;
         let n = N.fetch_add(1, Ordering::SeqCst);
         let tmp = std::env::temp_dir().join(format!("ks-index-{}-{n}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
