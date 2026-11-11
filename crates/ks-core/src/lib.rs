@@ -1,5 +1,6 @@
 //! knowledge-scout core: normalization, vocabulary, cards, validation, candidate collection.
 
+pub mod auth;
 pub mod card;
 pub mod collect;
 pub mod index;
