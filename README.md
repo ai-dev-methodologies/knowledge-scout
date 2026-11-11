@@ -58,7 +58,16 @@ ks card validate --data <data>      # 카드 형식 검증
 claude plugin install ks --marketplace ai-dev-methodologies/knowledge-scout
 ```
 
-설치할 때 세 값을 묻습니다.
+설치한 뒤 아래 세 값을 설정해야 MCP 서버가 뜹니다. 셸에서 `claude plugin install`로 설치하면 값을 묻지 않고 "3 userConfig options not yet set" 안내로 끝나니 이어서 설정합니다. Claude Code 안에서는 `/plugin configure ks@knowledge-scout`를 실행합니다. 셸에서는 JSON을 표준 입력으로 넘깁니다(`jq` 필요).
+
+```bash
+read -rs KS_REDIS_URL && export KS_REDIS_URL   # Redis URL을 화면과 셸 기록에 남기지 않고 입력
+jq -cn --arg ks "$(command -v ks)" --arg data "<data>" \
+  '{ks_path: $ks, data_dir: $data, redis_url: env.KS_REDIS_URL}' \
+  | claude plugin configure ks@knowledge-scout --values-stdin
+```
+
+Redis URL을 `--config` 같은 명령 인자로 넘기면 비밀번호가 셸 기록과 프로세스 목록에 남으니 쓰지 않습니다.
 
 | 값 | 내용 |
 | --- | --- |
@@ -67,6 +76,8 @@ claude plugin install ks --marketplace ai-dev-methodologies/knowledge-scout
 | Redis URL | `redis://:<비밀번호>@127.0.0.1:6379` 형식. 비밀번호에 `@`, `:`, `/`, `%` 같은 문자가 있으면 퍼센트 인코딩합니다 |
 
 Redis URL은 비밀번호를 포함하므로 OS 자격 증명 저장소에 저장됩니다. 나머지 두 값은 Claude Code 설정에 저장됩니다.
+
+연결 확인: Claude Code의 `/mcp` 목록에서 `plugin:ks:ks`가 연결됐는지 봅니다. 설정의 `allowedMcpServers`로 MCP 서버를 제한하고 있다면 ks 서버도 허용해야 합니다. 허용되지 않은 서버는 경고 없이 빠지고, 스킬은 `ks_*` 도구가 없다고만 답합니다.
 
 ### 스킬
 
