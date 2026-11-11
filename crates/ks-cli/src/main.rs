@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 #[derive(Parser)]
-#[command(name = "ks", about = "knowledge-scout: search a private pool of technical knowledge cards")]
+#[command(name = "ks", version, about = "knowledge-scout: search a private pool of technical knowledge cards")]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
