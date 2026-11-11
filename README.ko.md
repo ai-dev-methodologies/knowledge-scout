@@ -91,6 +91,10 @@ Redis URL은 비밀번호를 포함하므로 OS 자격 증명 저장소에 저�
 
 웹 조사(`/ks:research`)에는 로그인된 Google 프로필이 필요합니다. 터미널에서 사람이 직접 `ks auth google`을 실행해 로그인합니다. 표준 입력이 터미널이 아니면 거부하므로 에이전트나 MCP가 일반 명령으로 실행하면 막힙니다. 의사 터미널(pty)을 붙여 실행하는 프로그램까지 막지는 못하니, 로그인 창은 직접 실행한 것만 허용하세요.
 
+### 수집 큐
+
+`ks research search`에 `--queue <파일>`을 붙이면 결과 URL을 파일에 모읍니다. `ks research search --engine google-browser --query "<질의>" --queue <파일>`은 결과마다 JSON 한 줄(`v`, `card_key`, `url`, `title`, `engine`, `query`, `found_at`)을 덧붙입니다. 이미 파일에 있는 `card_key`는 다시 쓰지 않고, `--data <data>`를 함께 주면 이미 카드가 있는 페이지도 건너뜁니다. 파일이 들어갈 디렉터리는 미리 있어야 하며, 새 파일은 권한 `0600`으로 만듭니다. 엔진은 이 큐를 쓰기만 합니다. 이 저장소 밖에서 직접 돌리는 수집기가 큐를 읽어 본문을 가져옵니다. 큐는 덧붙이기 전용입니다. 수집기는 큐를 고치거나 비우지 말고, 처리한 항목은 자기 상태 파일에 따로 기록해야 합니다. 파일은 검색 전에 만들어지므로 검색 결과가 0건이어도 빈 파일이 남을 수 있고, `ks resume`으로 이어진 결과는 큐에 들어가지 않습니다. 줄 형식과 규칙은 [`ARCHITECTURE.md`](ARCHITECTURE.md)(영문) 9절에 있습니다.
+
 ## 전체 아키텍처
 
 점선과 "(계획)" 라벨이 붙은 상자는 아직 구현되지 않은 부분입니다. 실선은 구현된 부분입니다.
@@ -248,6 +252,7 @@ flowchart TB
 - 적용 기록(`ks record`, Redis Stream)과 JSONL 덤프(`ks record dump`)
 - MCP 서버(`ks_search`, `ks_get`, `ks_record`, `ks_search_web`)
 - Google 브라우저 수집 데몬: 로그인(`ks auth google`), 검색(`ks research search --engine google-browser`), 사람 개입 이벤트와 `handoff` / `resume`, 검색 쿼터와 질의 간격, macOS 데스크톱 알림
+- 수집 큐(`ks research search --queue <파일> [--data <디렉터리>]`): 찾은 URL을 JSONL 파일에 덧붙여 바깥의 수집기가 읽게 함
 - Claude Code plugin `ks`(`plugins/ks`)와 marketplace 매니페스트(`.claude-plugin/marketplace.json`): 스킬 `/ks:search`, `/ks:research`, `/ks:add`, 그리고 MCP 서버 등록. `ks` 실행 파일은 plugin에 포함하지 않고 사용자가 따로 설치하며, plugin은 설치할 때 받은 경로, 데이터 디렉터리, Redis URL을 씁니다.
 - CI: ubuntu에서 Redis와 Chrome 게이트를 켠 전체 테스트(`.github/workflows/ci.yml`)
 
@@ -255,6 +260,7 @@ flowchart TB
 - `ks export --scope team`
 - 팀 공유 모드: 팀 저장소의 PR과 CI 검사, 개인·팀 출처 표시
 - `google-api`, `ai-websearch` 수집 어댑터와 저장소 밖의 비공개 수집기 어댑터
+- MCP 도구 `ks_search_web`의 `--queue` 지원(지금은 CLI만 큐를 씁니다)
 - 사람 개입 이벤트별 절차 문서와 pre-push 훅
 
 ## Google 브라우저 수집 주의
