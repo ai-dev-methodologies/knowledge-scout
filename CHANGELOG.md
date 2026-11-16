@@ -2,11 +2,15 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). Verification evidence for a release (commit, CI run, review verdict) goes in the GitHub Release notes, not in this file.
 
-## [0.2.0] - unreleased
+## [Unreleased]
+
+### Added
+- Fusion ranker (`ks fusion build|search|batch`, demo level): the search lab's r4-unified ranker ported to Rust. Redis + CPU, its own key prefix (`ksf:`), an optional local bge-m3 embedding with a switch (`auto|on|off`, 700 ms timeout, circuit breaker) that falls back to the lexical ranker. Not wired into `ks search` or `ks mcp serve` yet. See [docs/FUSION.md](docs/FUSION.md).
+
+## [0.2.0] - 2026-11-12
 
 ### Added
 - `ks --version`.
-- Fusion ranker (`ks fusion build|search|batch`, demo level): the search lab's r4-unified ranker ported to Rust. Redis + CPU, its own key prefix (`ksf:`), an optional local bge-m3 embedding with a switch (`auto|on|off`, 700 ms timeout, circuit breaker) that falls back to the lexical ranker. Not wired into `ks search` or `ks mcp serve` yet. See [docs/FUSION.md](docs/FUSION.md).
 - Collection queue: `ks research search --queue <file> [--data <dir>]` appends the URLs of discovered results to a JSONL file for a collector outside this repository to read.
 - Remote MCP: `ks mcp serve --http <addr:port>` serves stateless Streamable HTTP at `/mcp` with only `ks_search` (keywords or a natural-language question) and `ks_get`; web search and application records stay on stdio. Requests need `Authorization: Bearer <key>`; readers get public cards only and `ks_get` without source fields, admins and owners the full card. Host and Origin are checked. It refuses to start on a non-loopback address without an active key, with `--no-auth`, or for readers when a card is not `scope: public`. See [docs/REMOTE-MCP.md](docs/REMOTE-MCP.md).
 - `ks key issue|list|revoke`: operator-issued API keys (owner, admin, reader). A key is shown once; Redis keeps only its SHA-256 and the metadata (purpose, user, role, issue time).
@@ -37,5 +41,6 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Per-event procedure documents for human-intervention events, and a pre-push hook
 - `FT.HYBRID` (keyword + vector hybrid search in one Redis query): backlog, to be provided later. See [docs/SEARCH-AND-RAG.md](docs/SEARCH-AND-RAG.md).
 
-[0.2.0]: https://github.com/ai-dev-methodologies/knowledge-scout/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ai-dev-methodologies/knowledge-scout/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ai-dev-methodologies/knowledge-scout/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ai-dev-methodologies/knowledge-scout/releases/tag/v0.1.0
