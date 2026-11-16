@@ -2,16 +2,14 @@ English | [한국어](README.ko.md)
 
 # knowledge-scout
 
-<!-- s:vision -->
 > **Recall the technical articles you read and forgot, and use them as evidence in your next design.**
 
 knowledge-scout is a knowledge search system for one person or a small team, built on Redis. The articles that matter most are often the ones you cannot recall when you start a design. knowledge-scout finds the articles you have already read that bear on the design in front of you, and hands them back as evidence.
 
-The engine in this repository is public. Your cards and source articles stay in your own private repository. The project is a v0.2.0 release candidate that runs on macOS, and you can try it on a public sample of 17 cards in the [Quick start](#quick-start).
+The engine in this repository is public. Your knowledge cards and source articles stay private, in your own directories. Version 0.2.0 is released and runs on macOS. You can try it on a public sample of 17 cards in [Try it](#try-it).
 
 <!-- s:concept -->
 ## Concept and impact
-
 ```mermaid
 flowchart LR
     A["An article you read"] --> B["Knowledge card<br/>problem · technique · limits"]
@@ -21,33 +19,30 @@ flowchart LR
     E -.->|"new questions"| A
 ```
 
-Each article you read becomes one **knowledge card**, which records the problem the article tackles, the technique it uses, its limits, and the kind of evidence behind it. Describe a design task in a sentence or two, and Redis recalls the cards that share its problem or technique. Your AI session (Claude Code) sorts those cards into **A** same problem, **B** a technique to borrow, and **C** reference, and shows each card's limits next to it as evidence for your next design.
+Each article you read becomes one **knowledge card**, which records the problem the article tackles, the technique it uses, its limits, and the kind of evidence behind it. A **controlled vocabulary** of entities, techniques, and domains tags every card. Describe a design task in a sentence or two. Your AI session (Claude Code) turns it into vocabulary terms and short problem phrases, and Redis recalls the cards that share them. The AI session then sorts those cards into **A** same problem, **B** a technique to borrow, and **C** reference, and shows each card's limits next to it as evidence for your next design.
 
-- **Precision@10 went from 0.298 to 0.796.** Precision@10 is the share of relevant cards in the top 10. The gain runs from the previous `ks search` engine to the experimental `ks fusion` ranker with its optional embedding switched on (it runs on CPU), measured in query-only search on the half of the queries kept for development. It is still just short of 0.80, the bar set for launch.
+- **Precision@10 went from 0.298 to 0.796 in my private search lab.** Precision@10 is the share of relevant cards in the top 10. The gain runs from `ks search`, the default engine, to the experimental `ks fusion` ranker with its optional CPU embedding switched on. Both were measured in query-only search on the half of the queries kept for development. 0.796 is still just short of 0.80, the bar set for launch.
 - **It runs on Redis and a CPU.** It uses no GPU and no vector database.
-- **I use it every day.** It searches about 19,600 saved technical articles.
+- **I use it every day**, on the cards of my private collection of about 19,600 saved technical articles.
 
-<!-- s:story -->
+<!-- s:why -->
 ## Why I built this
-
 I read a lot of technical articles. The ones that matter most slip my mind at the worst time, when I sit down to design the next system. I remember that I read something about the problem. I do not remember what it said or where I read it.
 
 So I decided to register what I read as source material. I wanted a knowledge base that I could search by context and by the techniques that link articles, and that I could draw on when I design architectures and systems later.
 
-To build it, I studied one Redis article and Ilyas Ibrahim's three-part series on Claude Code agents closely. None of them describes a knowledge search system. The idea came to me while I read about agents that lose their context. A model answers only from what is in its context window right now, and anything outside the window might as well not exist. Ilyas calls this "context amnesia". Forgetting what I read was the same problem.
-
-I took six principles from these articles and built each one into the system:
+To build it, I studied one Redis article and Ilyas Ibrahim's three-part series on Claude Code agents closely. None of them describes a knowledge search system. The idea came to me while I read about agents that lose their context. A model answers only from what is in its context window right now, and anything outside the window might as well not exist. Ilyas calls this "context amnesia". Forgetting what I read was the same problem. I took six principles from these articles and built each one into the system:
 
 | What I read | Source | What it became here |
 | --- | --- | --- |
 | Memory is an architecture requirement: move it out into a fast, shared store | Redis article | Cards live outside any session and are indexed in Redis |
 | Redis is the memory layer, not the intelligence layer | Redis article | Redis recalls. The AI session judges A, B, C |
 | Read a compact registry, not every report | Ilyas, part 2 | Search reads one-page cards, not full articles |
-| Inject only the context that matters | Ilyas, part 2 | The session sees only the returned candidates (up to 40) |
+| Inject only the context that matters | Ilyas, part 2 | The AI session sees only the returned candidates (up to 40) |
 | Do not trust a claim of "done". Check the output | Ilyas, part 2 | Card runs are audited and sample-judged. Search quality is measured |
 | Write the standards into the workflow | Ilyas, part 3 | A fixed card schema and a controlled vocabulary |
 
-My part was to move these principles from agents to the design work that a person and an AI do together, and to build them into a system that runs. Every article becomes a card with the same fields. A controlled vocabulary of entities, techniques, and domains links the cards. So an article about memory growth in a batch job can come up for a log-analysis task, because both use the same technique. Redis does the recall. The AI session makes the judgment, and it reads only the cards that come back.
+My part was to move these principles from agents to the design work that a person and an AI do together, and to build them into a system that runs. Every article becomes a card with the same fields. The controlled vocabulary links the cards. So an article about memory growth in a batch job can come up for a log-analysis task, because both use the same technique. Redis does the recall. The AI session makes the judgment, and it reads only the cards that come back.
 
 **Inspired by** (I borrowed ideas, not code, and built the system myself):
 - [Redis as Agent Memory: Building Stateful AI Agents with Redis and LangChain](https://medium.com/gitconnected/redis-as-agent-memory-building-stateful-ai-agents-with-redis-and-langchain-3dcd191a4fc2): moving agent memory out into a shared store, with Redis as the memory layer.
@@ -55,116 +50,70 @@ My part was to move these principles from agents to the design work that a perso
 - Ilyas Ibrahim, [The 4-Step Protocol That Fixes Claude Code Agent's Context Amnesia](https://medium.com/@ilyas.ibrahim/the-4-step-protocol-that-fixes-claude-codes-context-amnesia-c3937385561c): registry, context injection, sequencing, and verification gates.
 - Ilyas Ibrahim, [How to Build Production-Grade Systems with Claude Code without Context Drift](https://medium.com/@ilyas.ibrahim/how-to-build-production-grade-systems-with-claude-code-87f73dd311b9): review chains, and standards written into the workflow.
 
-<!-- s:overview -->
+<!-- s:diagram -->
 ## Architecture
-
-The system is a loop of six stages. Saved articles pass through the card factory and become Markdown cards. Redis indexes the cards, and Claude Code or a remote MCP server for a team calls them up. Questions that come up during design go back into the collection queue.
+The system is a loop of six stages. Saved articles pass through the card factory and become Markdown cards. Redis indexes the cards, and Claude Code or the remote MCP server for a team calls them up. Questions that come up during design go back into the collection queue. The first two stages run partly outside this repository: `ks research search --queue` writes the queue, a collector you run yourself fetches the articles, and `ks card import` loads the card factory's output. `/ks:add` writes one card at a time.
 
 ```mermaid
 flowchart TB
-    subgraph S1["1 · Learn and collect"]
-        Q["Collection queue<br/>what to read next"] --> SA["Saved articles"]
-    end
-    subgraph S2["2 · Card factory"]
-        CW["Claude agents write card fields<br/>problem, technique, limits, evidence type"] --> QC["Audits, sampled quality judging,<br/>stop rules"]
-    end
-    subgraph S3["3 · Knowledge base (private git repo)"]
-        CM["Cards as Markdown"]
-        VO["Controlled vocabulary<br/>entities, techniques, domains"]
-    end
-    subgraph S4["4 · Recall (Redis)"]
-        IX[("Redis index")] --> KS["ks search (default)"]
-        IX --> KF["ks fusion (experimental)<br/>optional CPU embedding"]
-    end
-    subgraph S5["5 · Apply"]
-        CC["Claude Code<br/>/ks:search"]
-        MC["Remote MCP for a team<br/>issued keys, search only"]
-    end
-    subgraph S6["6 · Design decisions"]
-        DD["A same problem<br/>B technique to borrow<br/>C reference<br/>+ each card's limits"]
-    end
-    SA --> CW
-    QC --> CM
-    CM & VO --> IX
-    KS --> CC & MC
+    Q["1 · Collection queue<br/>what to read next"] -->|"saved articles"| CF["2 · Card factory<br/>Claude agents write problem, technique, limits, evidence type<br/>audits, sampled quality judging, stop rules"]
+    CF --> KB["3 · Knowledge base, private git repo<br/>Markdown cards + controlled vocabulary (entities, techniques, domains)"]
+    KB --> IX[("4 · Redis index")]
+    IX --> KS["ks search (default)"]
+    IX -.-> KF["ks fusion (experimental)<br/>optional CPU embedding"]
+    KS --> CC["5 · Claude Code<br/>/ks:search"] & MC["5 · Remote MCP server for a team<br/>issued keys, search only"]
     KF -.->|"CLI only for now"| CC
-    CC & MC --> DD
+    CC & MC --> DD["6 · Design decisions<br/>A same problem · B technique to borrow · C reference<br/>+ each card's limits"]
     DD -->|"new questions, what to read next"| Q
 ```
 
-<!-- s:achieved -->
+<!-- s:status -->
 ## Results and where it stands
+Version 0.2.0 ships `ks search` (Redis matches vocabulary terms and text, no model), the Claude Code plugin (`/ks:search`, `/ks:add`, `/ks:research`), a search-only remote MCP server with API keys, the collection queue, and the public sample. It runs on macOS with Redis 8. On Linux its tests pass in CI, but real use is unverified. Windows is not supported. `ks fusion` is experimental and not in a release. `ks export --scope team` and `FT.HYBRID` are on the backlog. See [CHANGELOG.md](CHANGELOG.md).
 
-- I search a private corpus of about 19,600 saved technical articles every day. The cards behind the numbers below are not public. Three parts ship today: `ks search` (Redis, vocabulary terms and text, no model), the Claude Code plugin (`/ks:search`, `/ks:add`), and a search-only remote MCP server with API keys.
-- The Rust ranker matches the JS reference on 100% of top-40 ids and scores, and 361 workspace tests pass (commit a7cb2ab, `scripts/ks-redis-test.sh`).
-
-<!-- s:quality -->
 ### Search quality and how it was measured
-
-Precision@10 is the share of the top 10 cards that the judge graded relevant: grade 1 ("partly useful") or 2 ("answers it") on a 0-2 scale. An unjudged card counts as not relevant, so the numbers are a lower bound. The numbers below are out-of-fold on the dev half, from the private search lab:
+All numbers in this section come from my private search lab. Precision@10 is the share of the top 10 cards that the judge graded relevant: grade 1 ("partly useful") or 2 ("answers it") on a 0-2 scale. An unjudged card counts as not relevant, so the numbers are a lower bound. They are out-of-fold on the dev half, against a launch gate of 0.80 in both modes:
 
 | Ranker | Query only | Query + terms |
 | --- | --- | --- |
-| Previous `ks search` engine | 0.298 | 0.568 |
+| `ks search` (default engine) | 0.298 | 0.568 |
 | BM25 over character n-grams | 0.508 | 0.684 |
 | bge-m3 embedding alone | 0.636 | 0.686 |
 | `ks fusion`, CPU only (`--switch off`) | 0.744 | 0.794 |
 | `ks fusion` + CPU embedding (`--switch on`) | 0.796 | 0.808 |
-| Launch gate | 0.80 | 0.80 |
 
-The embedding row is the live-embedding run at 0.796. With cached query vectors it scores 0.802 (see [docs/FUSION.md](docs/FUSION.md)). The shipped weights were fitted on the dev queries, so the table shows out-of-fold results on the dev half, not results on unseen data.
+**Method.** A frozen snapshot of 5,607 cards. 100 real-use queries (80 Korean, 20 English), plus golden and new query sets. A Claude Sonnet judge graded 40,907 (query, card) pairs. Its agreement with a Claude Opus judge is weighted kappa 0.903, measured on a 61-packet sample that Opus cross-judged. The queries are split into dev and test halves, and the test half is sealed. Out-of-fold means each query is scored by models fitted without it. The shipped weights were fitted on the dev queries, so these are not results on unseen data.
 
-**Method.** A frozen snapshot of 5,607 cards. 100 real-use queries (80 Korean, 20 English), plus golden and new query sets. 40,907 (query, card) pairs graded by a Claude Sonnet judge, whose agreement with a Claude Opus judge is weighted kappa 0.903, measured on a 61-packet sample that Opus cross-judged. The queries are split into dev and test halves, and the test half is sealed. Out-of-fold means each query is scored by models fitted without it.
+**Where it stands.** With the embedding, query + terms clears the gate (0.808) and query only falls just short (0.796). On CPU only, both modes are below it. The sealed test half has not been run, so these are dev numbers, not a final result.
 
-**Where it stands.** The gate is 0.80 in both modes. With the embedding, query + terms clears it (0.808) and query only falls just short (0.796). On CPU only, both modes are below it. The sealed test half has not been run, so these are dev numbers, not a final result. `ks fusion` runs only from the CLI and is not yet wired into `ks search` or `ks mcp serve`.
-
-**Caveats.** The judge is an LLM. The lab set, the judgments and the trained weights are private, so this repository alone cannot reproduce the table. The numbers come from one corpus and one query mix. Latency is about 15 ms p50 on CPU only and about 190 ms p50 with a live CPU embedding in the lab harness ([docs/FUSION.md](docs/FUSION.md)). A single warm query on a quiet MacBook took about 50 ms. The Rust ranker matches the JS reference on all 112 dev query forms x 2 modes x 2 paths (top-40 ids and scores).
+**Caveats.** The judge is an LLM. The lab set, the judgments, and the trained weights are private, so this repository alone cannot reproduce the table. The numbers come from one corpus and one query mix. The embedding row is the live-embedding run. With cached query vectors, query only scores 0.802. In the lab harness, a query takes about 15 ms p50 on CPU only and about 190 ms p50 with a live CPU embedding. The Rust `ks fusion` returns the same top 40 ids and scores as the lab's JS reference on all 112 dev query forms, in both modes and on both paths. The 361 workspace tests passed at the commit that added it (a7cb2ab). [docs/FUSION.md](docs/FUSION.md) has the measurements this repository can show.
 
 <!-- s:quickstart -->
 ## Try it
-
-### Quick start
-
-Try it first on the small public sample in `examples/sample-data` (17 cards, 10 golden queries). Start Redis, index the sample with `ks index rebuild --data examples/sample-data`, then search it with `ks search --data examples/sample-data --vocab examples/sample-data/vocab/terms.json --queries examples/sample-data/queries.json --out <out.json>`. To use your own cards:
-
-1. Start Redis and install `ks` and the Claude Code plugin. Steps are in [docs/INSTALL.md](docs/INSTALL.md).
-2. Put your cards in a private directory, then run `ks card validate --data <data>` and `ks index rebuild --data <data>`.
-3. In Claude Code, run `/ks:search <your task>`. `/ks:add <URL or file>` turns one article into a card.
-
-For the collection side, see [docs/OPERATIONS.md](docs/OPERATIONS.md).
-
-<!-- s:demo -->
-### Demo
-
-`ks search` runs on the public sample described in the Quick start above. The `ks fusion` demo also needs the lab's model file and alias dictionary, which are not published, so read this section as a walkthrough.
+Try `ks search` on the public sample in `examples/sample-data` (17 cards, 10 golden queries). Start Redis and install `ks` as described in [docs/INSTALL.md](docs/INSTALL.md). Use a Redis that holds no index of yours, because a rebuild replaces the index ([docs/servers.md](docs/servers.md) runs a separate one). With the Redis settings from INSTALL in the environment, run:
 
 ```
-cargo build --release
-export KS_REDIS_URL=...    # the Redis ks uses; values are never printed
-# 1. Build the fusion index (own prefix ksf:; plain ks keys are never touched)
-ks fusion build --data <data dir> --aliases <aliases.json> --model <fusion-model.json> \
-    --vectors <card-vectors.bin> --prefix ksf:
-# 2. Search: --switch off is CPU only; auto uses a local bge-m3 server when it answers
-ks fusion search --query "GitHub Actions에서 APK 빌드와 서명 자동화" --limit 3 \
-    --switch auto --embed-url http://127.0.0.1:<port>
-# Or: build, then 5 queries, each with --switch off and --switch auto
-bash scripts/fusion-demo.sh <data dir> <aliases.json> <fusion-model.json> [<vectors.bin>] [<long summary dir>]
+ks index rebuild --data examples/sample-data
+ks search --data examples/sample-data --vocab examples/sample-data/vocab/terms.json \
+    --queries examples/sample-data/queries.json --out results.json
 ```
 
-`<data dir>` is the data root that holds `cards/` and `vocab/`. The abridged output below uses illustrative numbers and made-up titles. If the server is down or too slow, the same call returns the CPU-only ranking with `"path": "off"` and `"reason": "embed-timeout"` (or `"embed-error"`).
+To use your own cards, put them in a private data directory, run `ks card validate --data <data>` and `ks index rebuild --data <data>`, and install the Claude Code plugin. Then run `/ks:search <your task>` in Claude Code. `/ks:add <URL, file, or text>` turns one article into a card. The `ks fusion` demo needs a model file and an alias dictionary from the private search lab, so read [its demo](docs/FUSION.md#demo) as a walkthrough.
 
-```json
-{ "switch": "auto", "path": "on", "reason": "embedded", "candidates": 400,
-  "ms": { "embed": 33, "total": 52 },
-  "results": [
-    { "rank": 1, "title": "Signing Android release builds in CI without leaking the keystore" },
-    { "rank": 2, "title": "Caching Gradle dependencies in GitHub Actions" },
-    { "rank": 3, "title": "Automating Play Store uploads from a pipeline" } ] }
-```
+<!-- s:how -->
+## How a search works
+`/ks:search` and the remote MCP server both search with `ks search`, through the `ks_search` tool of `ks mcp serve`:
+1. **Interpret.** The AI session turns your task into controlled-vocabulary terms and short problem phrases (at most 32 terms of 64 characters each, and the task itself in up to 512 characters).
+2. **Recall.** Redis fetches the cards that carry a matching vocabulary term or contain a term in their title, summary, problems, limits, or reusable elements. Terms the vocabulary does not know come back as `unknown_terms` and match only as text.
+3. **Rank.** `ks` orders the cards by the number of matched vocabulary terms, then text matches, then the rarest matched term, and returns the top 40. It counts matches and judges nothing. If the cards or the vocabulary changed after the last `ks index rebuild`, it refuses to search and prints the rebuild command.
+4. **Judge.** The AI session reads only the returned cards, sorts each into A, B, or C or leaves it out, and quotes the card as evidence. A card's limits are shown as written. Card text comes from outside articles, so it is treated as data, never as instructions.
+
+`ks fusion` is an experimental second ranker that replaces steps 2 and 3. It runs from the CLI only (`ks fusion build`, `search`, `batch`) and is not wired into `/ks:search` or `ks mcp serve`. It indexes each card as one Redis hash under its own key prefix (`ksf:`), takes the top 400 candidates from one weighted `FT.SEARCH`, and ranks them with a first-pass and a final linear ranker into the top 40. The weights come from a model file that the private search lab writes (`--model`). The rankers read 88 features, the columns this engine computes out of the 142 it shares with the JS reference. It refuses a model that reads any other column. 83 features come from text matching. 5 need the embedding: query-card cosine, its z-score, and its reciprocal rank, plus 2 signals from each card's embedding neighbours among the candidates.
+
+The embedding is optional. It comes from a bge-m3 model that you serve on your own machine with llama.cpp's `llama-server`, on CPU only. `ks` accepts only a loopback URL, sends the query to the server's `POST /v1/embeddings` endpoint, and never uses it to generate text. Card vectors are FLOAT16 fields in the card hashes, not a vector index. `--switch auto|on|off` decides per query whether the embedding is used. With `auto`, the default, the query is embedded while Redis answers. If the server fails or takes longer than 700 ms, that query is ranked without the embedding, and a circuit breaker stops further calls for 5 s. `auto` also skips the embedding when fewer than 80% of the cards, or of a query's candidates, have a vector. The JSON output records the `path` each query took and the `reason`. Commands, safety rules, and measurements are in [docs/FUSION.md](docs/FUSION.md).
 
 <!-- s:example -->
 ## Example
-
 Task: "I want to find slow requests in web server logs and narrow down the cause." The cards below are made up.
 
 | Card | Why it matched | Tier |
@@ -176,108 +125,36 @@ Task: "I want to find slow requests in web server logs and narrow down the cause
 
 If card A says "assumes a single server", that sentence is shown as written, and you decide whether it fits your setup. A card's limits never move it up or down a tier.
 
-<!-- s:diagram -->
-## The search path in detail
-
-```mermaid
-flowchart LR
-    A["Articles you have read"] --> B["Knowledge cards<br/>summary, problems, limits, evidence type"]
-    B --> C[("Redis<br/>card index")]
-    D["Your task,<br/>one or two sentences"] --> E["AI session<br/>(Claude Code)"]
-    E -->|"query + vocabulary terms"| K["ks search (default, used by /ks:search and MCP)<br/>terms + text, up to 40"]
-    C --> K
-    K --> E
-    E -.->|"ks fusion (CLI only, not wired yet)"| G["First stage in Redis<br/>top 400 candidates"]
-    C -.-> G
-    G --> H["Lexical features<br/>plus embedding and neighbour features when on"]
-    I["Optional local embedding<br/>bge-m3 on CPU"] -.->|"switch: auto, on, off"| H
-    H --> J["Linear rankers<br/>first pass, then final"]
-    J -.->|"top 40"| E
-    E --> F["A same problem<br/>B technique to borrow<br/>C reference<br/>+ each card's limits"]
-```
-
-<!-- s:how -->
-## How the search works now
-
-There are two rankers over the same cards.
-
-| | `ks search` (default) | `ks fusion` (second ranker, demo level) |
-| --- | --- | --- |
-| Used by | `/ks:search`, `ks mcp serve` (stdio and remote) | the CLI only: `ks fusion build`, `search`, `batch` |
-| Candidates | matched vocabulary terms and text in Redis, up to 40 | weighted full-text first stage in Redis, top 400 |
-| Ranking | counts matches, judges nothing | 88 computed features, two linear rankers, top 40 |
-| Embedding | none | optional, local, CPU |
-
-How `ks fusion` works:
-
-1. **Index**: `ks fusion build` writes each card as one Redis hash under its own key prefix (`ksf:`). The card's embedding vector is a FLOAT16 hash field, not a vector index. The card files are the source of truth, so the index can be rebuilt at any time.
-2. **First stage**: one weighted `FT.SEARCH` returns the top 400 candidates.
-3. **Features**: the schema has 142 columns, shared with the JS reference. This engine computes 88 of them and rejects a model that reads any other column. 83 are lexical: matches of query terms against the title, keywords, summary, problems and limits fields, plus coverage and n-grams. The other 5 need the embedding and exist only on that path: 3 compare the query with the card (cosine, its z-score, its reciprocal rank), and 2 are embedding-neighbour signals among the candidates.
-4. **Rankers**: a first-pass linear ranker, then a final one. There is one set per path (embedding off or on) and per mode (query only, or query plus vocabulary terms). The trained weights file is not in this repository. Pass it with `--model`.
-5. **Embedding switch**: `--switch auto|on|off`. The optional embedding comes from a bge-m3 model (FP16 GGUF) that you serve on your own machine with llama.cpp's `llama-server`, on CPU only, with no GPU. llama.cpp is used only to compute embeddings, never to generate text: ks sends the query to the server's OpenAI-style `POST /v1/embeddings` endpoint. With `auto`, the query is embedded while Redis answers, and without that server ks ranks on the CPU lexical path. If the server takes longer than 700 ms or fails, that query is ranked on the CPU path only and a 5 s circuit breaker opens. Ranking also skips the embedding when fewer than 80% of the candidates (or of the cards) have a vector (`few-vectors`, `no-vectors`). The JSON output records which `path` was used and why (`reason`).
-6. **Judging**: the AI session reads only the returned cards, sorts them into A, B, C, or out, and shows each card's limits. Card text comes from outside articles, so it is treated as data, never as instructions.
+<!-- s:remote -->
+## Remote MCP (v0.2.0)
+With a key you issue, someone else can search your cards from their own Claude Code. The remote MCP server ranks with `ks search`, and `ks fusion` is not wired in. Details are in [docs/REMOTE-MCP.md](docs/REMOTE-MCP.md).
+- **Search only.** It offers `ks_search` and `ks_get`. Web search, application records, collection, card creation, and indexing stay with the operator.
+- **Keys and roles.** `ks key issue` prints a key once, and Redis keeps only its SHA-256 and metadata. A `reader` sees only `scope: public` cards and a fixed list of fields. `admin` and `owner` see full cards.
+- **Closed by default.** On a non-loopback address the server refuses to start unless an active key exists. `--no-auth` works only on loopback, and readers are refused if any card is not public. Every request is checked for its key, Host, and Origin. There is no TLS, so connect through an SSH tunnel, for example to `http://127.0.0.1:8790/mcp` with `Authorization: Bearer <key>`.
 
 <!-- s:fit -->
 ## Where it fits, and where it does not
-
-It fits when:
-- one person or a small team keeps hundreds to a few thousand articles and wants prior cases before starting work;
-- you want to use it inside an AI coding tool such as Claude Code;
-- you want to run it on Redis and a CPU, with no GPU and no separate search service (the embedding is optional).
-
-Where it does not fit, or has limits:
+It fits when one person or a small team keeps hundreds to a few thousand cards and wants prior cases before starting work, inside an AI coding tool such as Claude Code, on Redis and a CPU with no GPU and no separate search service. It does not fit, or has limits, here:
 - **An article without a card cannot be found.** Neither can a detail left out of a card.
-- **The default engine misses different wording.** In our own evaluation of `ks search`, 47 of 59 expected cards (79.7%) were among the 40 candidates. That was 50 queries, a private evaluation set, one judge and one run, so the margin is large. The search terms were also chosen with the vocabulary list in view, and the real skill does not show that list, so the real-use figure is probably lower. It has not been measured. The optional embedding in `ks fusion` targets this gap (see the table above), measured on the lab set only.
-- **Each search takes effort.** One measured run of the AI-session flow took 58 seconds and about $0.60 of model usage. It suits a few searches a day.
-- Hundreds of thousands of articles, or searching raw text directly, call for embedding-based search (RAG). See "Is this RAG?" below.
+- **`ks search` misses different wording.** In my own evaluation, 47 of 59 expected cards (79.7%) were among the 40 candidates. That was 50 queries, a private evaluation set, one judge, and one run, so the margin is large. The search terms were chosen with the vocabulary list in view, and `/ks:search` does not show that list, so real use is probably lower. It has not been measured. The optional embedding in `ks fusion` targets this gap, measured on the lab set only.
+- **Each search takes effort.** One measured run of `/ks:search` took 58 seconds and about $0.60 of model usage. It suits a few searches a day.
 
 <!-- s:rag -->
 ## Is this RAG?
-
-Yes, in the broad sense: it searches first, then an AI reads what it found. It differs in two ways. It searches **cards**, not chunks of raw articles. And the default engine finds them by **tags and exact text matches** (keyword search). The optional `ks fusion` path adds a local CPU embedding as one group of ranking features. There is still no vector database: card vectors are plain Redis hash fields, not a vector index.
-
-**Signs to move further toward RAG or a vector database** (thresholds are proposals, not measured):
-- Rephrased queries score clearly lower, or fewer than 85% of expected cards reach the 40 candidates on fresh queries: use the embedding path (in the lab, it adds about 0.05 precision@10 in query-only mode).
+Yes, in the broad sense: it searches first, then an AI reads what it found. It differs in two ways. It searches **cards**, not chunks of raw articles. And `ks search` finds them by **tags and exact text matches** (keyword search). `ks fusion` can add a local CPU embedding as one group of ranking features, but there is still no vector database or vector index. Signs to move further toward RAG or a vector database (the thresholds are proposals, not measurements):
+- Fewer than 85% of expected cards reach the 40 candidates on fresh queries, or rephrased queries score clearly lower: use embeddings. In the lab, the `ks fusion` embedding adds about 0.05 precision@10 in query-only mode.
 - You need articles that have no card, or details missing from cards: search raw text chunks.
-- Korean questions must find English articles directly: use multilingual embeddings (bge-m3 is one). Text matching cannot cross languages.
-- A million vectors or more, or tens of queries per second: use a dedicated vector database.
+- Korean questions must find English articles directly: use multilingual embeddings such as bge-m3. Text matching cannot cross languages.
+- A million vectors or more, or tens of queries per second: an HNSW index in Redis first, then a dedicated vector database.
 
-**Backlog notice: `FT.HYBRID` (keyword plus vector hybrid search in one Redis query) is on the backlog and will be provided later.** Today knowledge-scout uses no vector index.
-
-Evidence, the full table and the sources ([BEIR](https://arxiv.org/abs/2104.08663), [Anthropic Contextual Retrieval](https://www.anthropic.com/news/contextual-retrieval), [Redis `FT.HYBRID`](https://redis.io/docs/latest/commands/ft.hybrid/) and others) are in [docs/SEARCH-AND-RAG.md](docs/SEARCH-AND-RAG.md). Most are vendor tests or small studies. Read them as hints, and measure on your own queries.
-
-<!-- s:remote -->
-## Remote MCP (v0.2.0)
-
-With a key you issue, someone else can search your cards from their own Claude Code. It uses the default `ks search` ranking. Fusion is not wired in yet.
-
-- **Search only.** The remote server offers `ks_search` and `ks_get`. Web search, recording, collection, card creation, and indexing stay with the operator.
-- **Keys.** The operator issues keys with `ks key issue`, and Redis stores only a hash of each key. Roles: `reader` sees public cards and a fixed list of fields, `admin` and `owner` see full cards.
-- **Closed by default.** The server will not listen on a non-loopback address without a valid key, and it checks Host and Origin.
-- **Connect.** Open an SSH tunnel, then add an HTTP MCP server at `http://127.0.0.1:8790/mcp` with `Authorization: Bearer <key>`.
-
-Details: [docs/REMOTE-MCP.md](docs/REMOTE-MCP.md).
-
-<!-- s:status -->
-## Status
-
-The v0.2.0 release candidate works on macOS, with Redis, the `ks` CLI, and the Claude Code plugin. On Linux the tests pass in CI, but real use is unverified. Windows is not supported. The collection queue, remote MCP over HTTP (search only, API keys), and the sample pool are in place. `ks export --scope team` is not. `ks fusion` is demo level (see "Results and where it stands"), and `FT.HYBRID` is on the backlog. See [CHANGELOG.md](CHANGELOG.md).
+**Backlog notice: `FT.HYBRID` (keyword plus vector hybrid search in one Redis query) is on the backlog and will be provided later.** The evidence and sources ([BEIR](https://arxiv.org/abs/2104.08663), [Anthropic Contextual Retrieval](https://www.anthropic.com/news/contextual-retrieval), [Redis `FT.HYBRID`](https://redis.io/docs/latest/commands/ft.hybrid/), and others) are in [docs/SEARCH-AND-RAG.md](docs/SEARCH-AND-RAG.md). Most are vendor tests or small studies. Read them as hints, and measure on your own queries.
 
 <!-- s:google -->
 ## Google browser collection notice
+The `google-browser` engine behind `/ks:research` automatically queries Google search results pages with the user's own logged-in profile. Such automated querying risks violating Google's terms, and the user is responsible for judging and accepting that risk. The defaults are low frequency (3 to 8 seconds between queries, a quota of 20 per hour and 100 per day per profile) and human intervention first (it stops when a CAPTCHA, consent prompt, or block appears). It does not evade detection.
 
-The `google-browser` engine automatically queries Google search results pages with the user's own logged-in profile. Such automated querying risks violating Google's terms, and the user is responsible for judging and accepting that risk. The defaults are low frequency (3 to 8 seconds between queries, a quota of 20 per hour and 100 per day per profile) and human intervention first (it stops when a CAPTCHA, consent prompt, or block appears). It does not evade detection.
-
-Google's Terms of Service prohibit automated access that does not follow robots.txt, and google.com's robots.txt disallows `/search`. Using this engine may violate those terms, and if the violation is serious or repeated, Google may suspend the account. We recommend using a Google account dedicated to this purpose rather than your everyday account. The alternative that respects the terms is the official API adapter (planned).
+Google's Terms of Service prohibit automated access that does not follow robots.txt, and google.com's robots.txt disallows `/search`. Using this engine may violate those terms, and if the violation is serious or repeated, Google may suspend the account. Use a Google account dedicated to this purpose rather than your everyday account. The alternative that respects the terms is the official API adapter (planned).
 
 <!-- s:docs -->
 ## Documentation map and license
-
-- [docs/INSTALL.md](docs/INSTALL.md): Redis, `ks`, card directory, plugin, skills, Google login
-- [docs/OPERATIONS.md](docs/OPERATIONS.md): collection queue, architecture diagram, browser search flow, components, data flow
-- [docs/SEARCH-AND-RAG.md](docs/SEARCH-AND-RAG.md): search method, limits, when to move to RAG
-- [docs/FUSION.md](docs/FUSION.md): the fusion ranker (`ks fusion`), with its commands, embedding switch, safety rules and measurements
-- [docs/REMOTE-MCP.md](docs/REMOTE-MCP.md): remote MCP (v0.2.0)
-- [SECURITY.md](SECURITY.md), [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md)
-
-Licensed under Apache-2.0 ([LICENSE](LICENSE)). The origin of the borrowed code is recorded in [NOTICE](NOTICE).
+[docs/INSTALL.md](docs/INSTALL.md) covers Redis, `ks`, the card directory, the plugin, the skills, and Google login. [docs/OPERATIONS.md](docs/OPERATIONS.md) covers the collection queue, the browser search flow, and the components. [docs/SEARCH-AND-RAG.md](docs/SEARCH-AND-RAG.md) covers the search method, its limits, and when to move to RAG. [docs/FUSION.md](docs/FUSION.md) covers `ks fusion`, and [docs/REMOTE-MCP.md](docs/REMOTE-MCP.md) covers the remote MCP server (v0.2.0). See also [SECURITY.md](SECURITY.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [CHANGELOG.md](CHANGELOG.md). Licensed under Apache-2.0 ([LICENSE](LICENSE)). The origin of the borrowed code is recorded in [NOTICE](NOTICE).
