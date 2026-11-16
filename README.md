@@ -2,9 +2,9 @@ English | [한국어](README.ko.md)
 
 # knowledge-scout
 
-> **Recall the technical articles you read and forgot, and use them as evidence in your next design.**
+> **You can't read every technical article worth reading. Save the good ones, and find the right ones when you design.**
 
-knowledge-scout is a knowledge search system for one person or a small team, built on Redis. The articles that matter most are often the ones you cannot recall when you start a design. knowledge-scout finds the articles you have already read that bear on the design in front of you, and hands them back as evidence.
+knowledge-scout is a knowledge search system for one person or a small team, built on Redis. Good technical articles come out faster than anyone can read them. Each article you pick to keep becomes a knowledge card, and the card is searchable whether or not you have read the article. When you start a design, knowledge-scout finds the cards that bear on it and hands them back as evidence.
 
 The engine in this repository is public. Your knowledge cards and source articles stay private, in your own directories. Version 0.2.0 is released and runs on macOS. You can try it on a public sample of 17 cards in [Try it](#try-it).
 
@@ -12,28 +12,28 @@ The engine in this repository is public. Your knowledge cards and source article
 ## Concept and impact
 ```mermaid
 flowchart LR
-    A["An article you read"] --> B["Knowledge card<br/>problem · technique · limits"]
+    A["New technical articles<br/>more than you can read"] --> S["You pick what to keep<br/>read or not"] --> B["Knowledge card<br/>problem · technique · limits"]
     B --> C[("Redis<br/>links cards by problem and technique")]
     C --> D["AI session<br/>sorts into A · B · C, shows limits"]
     D --> E["Evidence for<br/>your next design"]
-    E -.->|"new questions"| A
+    E -.->|"new questions"| S
 ```
 
-Each article you read becomes one **knowledge card**, which records the problem the article tackles, the technique it uses, its limits, and the kind of evidence behind it. A **controlled vocabulary** of entities, techniques, and domains tags every card. Describe a design task in a sentence or two. Your AI session (Claude Code) turns it into vocabulary terms and short problem phrases, and Redis recalls the cards that share them. The AI session then sorts those cards into **A** same problem, **B** a technique to borrow, and **C** reference, and shows each card's limits next to it as evidence for your next design.
+Each article you pick becomes one **knowledge card**, which records the problem the article tackles, the technique it uses, its limits, and the kind of evidence behind it. A **controlled vocabulary** of entities, techniques, and domains tags every card. Describe a design task in a sentence or two. Your AI session (Claude Code) turns it into vocabulary terms and short problem phrases, and Redis recalls the cards that share them. The AI session then sorts those cards into **A** same problem, **B** a technique to borrow, and **C** reference, and shows each card's limits next to it as evidence for your next design.
 
 - **Precision@10 went from 0.298 to 0.796 in my private search lab.** Precision@10 is the share of relevant cards in the top 10. The gain runs from `ks search`, the default engine, to the experimental `ks fusion` ranker with its optional CPU embedding switched on. Both were measured in query-only search on the half of the queries kept for development. 0.796 is still just short of 0.80, the bar set for launch.
 - **It runs on Redis and a CPU.** It uses no GPU and no vector database.
-- **I use it every day**, on the cards of my private collection of about 19,600 saved technical articles.
+- **I use it every day**, on the cards of my private collection of about 19,600 saved technical articles. I have not read them all.
 
 <!-- s:why -->
 ## Why I built this
-I read a lot of technical articles. The ones that matter most slip my mind at the worst time, when I sit down to design the next system. I remember that I read something about the problem. I do not remember what it said or where I read it.
+Good technical articles pour out every day. I pick the ones worth reading and save them, but I save them faster than I can read them. When I sit down to design the next system, the article that would help may be in that pile. If I never read it, I cannot remember it.
 
-So I decided to register what I read as source material. I wanted a knowledge base that I could search by context and by the techniques that link articles, and that I could draw on when I design architectures and systems later.
+So I decided to register what I pick as source material, whether I have read it or not. Each article becomes a card in a knowledge base that I can search by context and by the techniques that link articles. I draw on it when I design architectures and systems.
 
-To build it, I studied one Redis article and Ilyas Ibrahim's three-part series on Claude Code agents closely. None of them describes a knowledge search system. The idea came to me while I read about agents that lose their context. A model answers only from what is in its context window right now, and anything outside the window might as well not exist. Ilyas calls this "context amnesia". Forgetting what I read was the same problem. I took six principles from these articles and built each one into the system:
+To build it, I studied one Redis article and Ilyas Ibrahim's three-part series on Claude Code agents closely. None of them describes a knowledge search system. The idea came to me while I read about agents that lose their context. A model answers only from what is in its context window right now, and anything outside the window might as well not exist. Ilyas calls this "context amnesia". Their answer is to keep context in an external, structured store and recall only what is relevant. My unread backlog had the same shape. An article I saved but never read is not in my head, but in a structured store it can still come back when a design needs it. I took six principles from these articles and built each one into the system:
 
-| What I read | Source | What it became here |
+| Principle | Source | What it became here |
 | --- | --- | --- |
 | Memory is an architecture requirement: move it out into a fast, shared store | Redis article | Cards live outside any session and are indexed in Redis |
 | Redis is the memory layer, not the intelligence layer | Redis article | Redis recalls. The AI session judges A, B, C |
@@ -42,7 +42,7 @@ To build it, I studied one Redis article and Ilyas Ibrahim's three-part series o
 | Do not trust a claim of "done". Check the output | Ilyas, part 2 | Card runs are audited and sample-judged. Search quality is measured |
 | Write the standards into the workflow | Ilyas, part 3 | A fixed card schema and a controlled vocabulary |
 
-My part was to move these principles from agents to the design work that a person and an AI do together, and to build them into a system that runs. Every article becomes a card with the same fields. The controlled vocabulary links the cards. So an article about memory growth in a batch job can come up for a log-analysis task, because both use the same technique. Redis does the recall. The AI session makes the judgment, and it reads only the cards that come back.
+My part was to move these principles from agents to the design work that a person and an AI do together, to point them at the articles I saved but have not read, and to build them into a system that runs. Every article becomes a card with the same fields. The controlled vocabulary links the cards. So an article about memory growth in a batch job can come up for a log-analysis task, because both use the same technique, even if I never read it. Redis does the recall. The AI session makes the judgment, and it reads only the cards that come back.
 
 **Inspired by** (I borrowed ideas, not code, and built the system myself):
 - [Redis as Agent Memory: Building Stateful AI Agents with Redis and LangChain](https://medium.com/gitconnected/redis-as-agent-memory-building-stateful-ai-agents-with-redis-and-langchain-3dcd191a4fc2): moving agent memory out into a shared store, with Redis as the memory layer.
@@ -52,11 +52,11 @@ My part was to move these principles from agents to the design work that a perso
 
 <!-- s:diagram -->
 ## Architecture
-The system is a loop of six stages. Saved articles pass through the card factory and become Markdown cards. Redis indexes the cards, and Claude Code or the remote MCP server for a team calls them up. Questions that come up during design go back into the collection queue. The first two stages run partly outside this repository: `ks research search --queue` writes the queue, a collector you run yourself fetches the articles, and `ks card import` loads the card factory's output. `/ks:add` writes one card at a time.
+The system is a loop of six stages. The articles you pick pass through the card factory and become Markdown cards. Redis indexes the cards, and Claude Code or the remote MCP server for a team calls them up. Questions that come up during design go back into the collection queue. The first two stages run partly outside this repository: `ks research search --queue` writes the queue, a collector you run yourself fetches the articles, and `ks card import` loads the card factory's output. `/ks:add` writes one card at a time.
 
 ```mermaid
 flowchart TB
-    Q["1 · Collection queue<br/>what to read next"] -->|"saved articles"| CF["2 · Card factory<br/>Claude agents write problem, technique, limits, evidence type<br/>audits, sampled quality judging, stop rules"]
+    Q["1 · Collection queue<br/>what to collect next"] -->|"articles you picked"| CF["2 · Card factory<br/>Claude agents write problem, technique, limits, evidence type<br/>audits, sampled quality judging, stop rules"]
     CF --> KB["3 · Knowledge base, private git repo<br/>Markdown cards + controlled vocabulary (entities, techniques, domains)"]
     KB --> IX[("4 · Redis index")]
     IX --> KS["ks search (default)"]
@@ -64,7 +64,7 @@ flowchart TB
     KS --> CC["5 · Claude Code<br/>/ks:search"] & MC["5 · Remote MCP server for a team<br/>issued keys, search only"]
     KF -.->|"CLI only for now"| CC
     CC & MC --> DD["6 · Design decisions<br/>A same problem · B technique to borrow · C reference<br/>+ each card's limits"]
-    DD -->|"new questions, what to read next"| Q
+    DD -->|"new questions, what to collect next"| Q
 ```
 
 <!-- s:status -->
@@ -114,7 +114,7 @@ The embedding is optional. It comes from a bge-m3 model that you serve on your o
 
 <!-- s:example -->
 ## Example
-Task: "I want to find slow requests in web server logs and narrow down the cause." The cards below are made up.
+Task: "I want to find slow requests in web server logs and narrow down the cause." The cards below are made up. The search reads only the cards, so it makes no difference whether you have read the articles behind them.
 
 | Card | Why it matched | Tier |
 | --- | --- | --- |
@@ -134,8 +134,8 @@ With a key you issue, someone else can search your cards from their own Claude C
 
 <!-- s:fit -->
 ## Where it fits, and where it does not
-It fits when one person or a small team keeps hundreds to a few thousand cards and wants prior cases before starting work, inside an AI coding tool such as Claude Code, on Redis and a CPU with no GPU and no separate search service. It does not fit, or has limits, here:
-- **An article without a card cannot be found.** Neither can a detail left out of a card.
+It fits when one person or a small team saves more articles than they can read, turns them into hundreds to a few thousand cards, and wants prior cases from them before starting work. It runs inside an AI coding tool such as Claude Code, on Redis and a CPU with no GPU and no separate search service. It does not fit, or has limits, here:
+- **An article without a card cannot be found.** Neither can a detail left out of a card. For an article you have not read, the card is all that you and the search have.
 - **`ks search` misses different wording.** In my own evaluation, 47 of 59 expected cards (79.7%) were among the 40 candidates. That was 50 queries, a private evaluation set, one judge, and one run, so the margin is large. The search terms were chosen with the vocabulary list in view, and `/ks:search` does not show that list, so real use is probably lower. It has not been measured. The optional embedding in `ks fusion` targets this gap, measured on the lab set only.
 - **Each search takes effort.** One measured run of `/ks:search` took 58 seconds and about $0.60 of model usage. It suits a few searches a day.
 
