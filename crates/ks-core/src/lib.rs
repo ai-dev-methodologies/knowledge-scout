@@ -3,6 +3,7 @@
 pub mod auth;
 pub mod card;
 pub mod collect;
+pub mod fusion;
 pub mod index;
 pub mod normalize;
 pub mod queue;

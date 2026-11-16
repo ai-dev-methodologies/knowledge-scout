@@ -1,4 +1,5 @@
 mod browser;
+mod fusion;
 mod http;
 mod mcp;
 
@@ -33,6 +34,9 @@ enum Cmd {
     /// Redis index operations
     #[command(subcommand)]
     Index(IndexCmd),
+    /// Fusion ranker (Redis + CPU, switchable CPU embedding) on its own key prefix (default ksf:)
+    #[command(subcommand)]
+    Fusion(fusion::FusionCmd),
     /// Record how a card was judged for a task (XADD to the application stream), or dump the records
     #[command(args_conflicts_with_subcommands = true)]
     Record(RecordCmd),
@@ -296,6 +300,7 @@ fn main() -> ExitCode {
         Cmd::Card(CardCmd::Id(a)) => card_id_of(a),
         Cmd::Search(a) => search(a),
         Cmd::Index(IndexCmd::Rebuild(a)) => rebuild(a),
+        Cmd::Fusion(c) => fusion::run(c),
         Cmd::Record(r) => record(r),
         Cmd::Mcp(McpCmd::Serve(a)) => mcp_serve(a),
         Cmd::Key(c) => key(c),
