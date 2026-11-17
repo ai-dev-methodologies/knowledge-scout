@@ -160,6 +160,11 @@ impl Vocab {
         Ok(Vocab { terms, index })
     }
 
+    /// The entry of an already normalized key (canonical term or alias), without plural folding.
+    pub fn lookup(&self, key: &str) -> Option<&Resolved> {
+        self.index.get(key)
+    }
+
     pub fn resolve(&self, term: &str) -> Option<Resolved> {
         let t = normalize_term(term);
         if t.is_empty() {
