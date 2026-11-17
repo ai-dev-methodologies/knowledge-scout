@@ -7,7 +7,7 @@
 RAG (retrieval-augmented generation) means: search first, then let an AI read what the search found. In that broad sense knowledge-scout is RAG. It differs from the common recipe in two ways:
 
 - **What it searches.** Short knowledge cards (title, problems, limits, evidence type, tags), not chunks of the raw articles.
-- **How it searches.** Controlled-vocabulary tags and exact text matches (keyword search). There are no embeddings and no vector database. The AI session reads the candidates and judges them, so the server only counts matches and needs no model.
+- **How it searches.** Controlled-vocabulary tags and exact text matches (keyword search). The default engine uses no embeddings and no vector database. The experimental `ks fusion` ranker can add a local CPU embedding (FLOAT16 vectors stored in Redis hashes, no vector index); see [FUSION.md](FUSION.md). The AI session reads the candidates and judges them, so the server only counts matches and needs no model.
 
 So the real question is not "RAG or not" but "what finds the candidates". The rest of this page says when this choice works, where it fails, and what to switch to.
 

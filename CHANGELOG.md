@@ -2,10 +2,13 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). Verification evidence for a release (commit, CI run, review verdict) goes in the GitHub Release notes, not in this file.
 
-## [Unreleased]
+## [0.3.0] - 2026-11-17
 
 ### Added
 - Fusion ranker (`ks fusion build|search|batch`, demo level): the search lab's r4-unified ranker ported to Rust. Redis + CPU, its own key prefix (`ksf:`), an optional local bge-m3 embedding with a switch (`auto|on|off`, 700 ms timeout, circuit breaker) that falls back to the lexical ranker. Not wired into `ks search` or `ks mcp serve` yet. See [docs/FUSION.md](docs/FUSION.md).
+
+### Changed
+- The README (English and Korean) is rewritten as an overview: concept and impact with a concept diagram, why it was built and the articles that inspired it, an architecture diagram, measured results with the gap to the launch gate, and how to try it. Every technical claim was checked against the code. `docs/SEARCH-AND-RAG.md` now says the default engine uses no embeddings while the experimental `ks fusion` ranker can add a local CPU embedding.
 
 ## [0.2.0] - 2026-11-12
 
@@ -42,6 +45,6 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Per-event procedure documents for human-intervention events, and a pre-push hook
 - `FT.HYBRID` (keyword + vector hybrid search in one Redis query): backlog, to be provided later. See [docs/SEARCH-AND-RAG.md](docs/SEARCH-AND-RAG.md).
 
-[Unreleased]: https://github.com/ai-dev-methodologies/knowledge-scout/compare/v0.2.0...HEAD
+[0.3.0]: https://github.com/ai-dev-methodologies/knowledge-scout/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ai-dev-methodologies/knowledge-scout/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ai-dev-methodologies/knowledge-scout/releases/tag/v0.1.0
