@@ -75,7 +75,7 @@ Do not pass the Redis URL as a command argument such as `--config`; that would l
 
 The Redis URL contains the password, so it is stored in the OS credential store. The other two values are stored in the Claude Code settings.
 
-Verify the connection: check that `plugin:ks:ks` is connected in the `/mcp` list in Claude Code. If you restrict MCP servers with `allowedMcpServers` in your settings, you must allow the ks server as well. A server that is not allowed is dropped without a warning, and the skills only reply that the `ks_*` tools are missing.
+Verify the connection: check that `plugin:ks:ks` is connected in the `/mcp` list in Claude Code. If you restrict MCP servers with `allowedMcpServers` in your settings, you must allow the ks server as well. Otherwise Claude Code blocks it: the server does not connect and its tools are missing (`claude -p` prints `Warning: MCP server blocked by enterprise policy: <name>` on stderr).
 
 ## Skills
 

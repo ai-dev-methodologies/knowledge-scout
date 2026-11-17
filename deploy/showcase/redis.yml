@@ -1,0 +1,39 @@
+# Redis for the showcase instance (a sample pool behind the remote MCP). Starts alone: no app variable is needed.
+#   docker compose --env-file <env> -p <project> -f redis.yml [-f app.yml] up -d --wait redis
+# Same search module settings as the repository's docker-compose.yml (`ks` checks them at search time); the key store for
+# `ks key issue` lives here too, so the data is persisted (named volume `redis-data`, removed only by `down -v`).
+# Small footprint: 128 MB maxmemory, 256 MB container cap, 0.5 CPU. Published on the loopback only.
+services:
+  redis:
+    image: redis:8.10.3
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    ports:
+      - "127.0.0.1:${KS_REDIS_PORT:-6391}:6379"
+    environment:
+      REDIS_PASSWORD: ${KS_REDIS_PASSWORD:?set KS_REDIS_PASSWORD in the env file}
+    # The config file is written inside the container so the password never appears in process arguments.
+    command:
+      - sh
+      - -c
+      - |
+        umask 077
+        {
+          printf 'requirepass %s\n' "$$REDIS_PASSWORD"
+          echo 'appendonly yes'
+          echo 'maxmemory 128mb'
+          echo 'maxmemory-policy noeviction'
+          echo 'loadmodule /usr/local/lib/redis/modules/redisearch.so MAXPREFIXEXPANSIONS 1000000000 TIMEOUT 10000 ON_TIMEOUT FAIL'
+          echo 'loadmodule /usr/local/lib/redis/modules/rejson.so'
+        } > /tmp/ks.conf
+        exec redis-server /tmp/ks.conf
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  redis-data:

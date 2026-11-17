@@ -56,7 +56,7 @@ ssh -L 8790:127.0.0.1:8790 <ssh-host>
 }
 ```
 
-Put the key in the `KS_KEY` environment variable (read it from the key file the operator gave you; do not paste it into a command line, where it would stay in shell history). Check that your Claude Code version expands `${VAR}` inside `headers`. If your settings restrict MCP servers with `allowedMcpServers`, allow this server too, or it is dropped without a warning.
+Put the key in the `KS_KEY` environment variable (read it from the key file the operator gave you; do not paste it into a command line, where it would stay in shell history). Check that your Claude Code version expands `${VAR}` inside `headers`. If your settings restrict MCP servers with `allowedMcpServers`, allow this server too. Otherwise Claude Code blocks it: the server does not connect and its tools are missing (`claude -p` prints `Warning: MCP server blocked by enterprise policy: <name>` on stderr).
 
 Responses: 401 for a missing, wrong, or revoked key; 403 for a role below `--min-role` or a Host that is not allowed.
 

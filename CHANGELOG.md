@@ -16,6 +16,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - `ks key issue|list|revoke`: operator-issued API keys (owner, admin, reader). A key is shown once; Redis keeps only its SHA-256 and the metadata (purpose, user, role, issue time).
 - Card scope `public` (`ks card import --scope public`).
 - A small public sample card pool (`examples/sample-data`) with golden queries, to try the tool without your own cards.
+- Showcase kit (`deploy/showcase`, [docs/SHOWCASE.md](docs/SHOWCASE.md)): Docker Compose files for Redis and the remote MCP server on 127.0.0.1 with the sample pool, an install runbook that issues owner and reader keys into 0600 files, a demo prompt and an `.mcp.json` example for Claude Code.
 - A separate Redis instance for development, samples and tests (`docker-compose.test.yml`, `docs/servers.md`), a test guard that refuses the personal instance, and `scripts/ks-redis-test.sh`, which serializes Redis tests.
 - CI runs on `rc/**` and `release/**` pushes and can be started by hand; release candidates also produce a static Linux x86_64 (musl) `ks` binary as a CI artifact.
 

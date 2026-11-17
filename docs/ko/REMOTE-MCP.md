@@ -56,7 +56,7 @@ ssh -L 8790:127.0.0.1:8790 <ssh-host>
 }
 ```
 
-키는 `KS_KEY` 환경 변수에 넣습니다(운영자가 준 키 파일에서 읽으세요. 명령줄에 붙여 넣으면 셸 기록에 남습니다). 쓰는 Claude Code 버전이 `headers` 안의 `${VAR}`를 풀어 주는지 확인하세요. 설정에서 `allowedMcpServers`로 MCP 서버를 제한했다면 이 서버도 허용해야 합니다. 허용하지 않으면 경고 없이 빠집니다.
+키는 `KS_KEY` 환경 변수에 넣습니다(운영자가 준 키 파일에서 읽으세요. 명령줄에 붙여 넣으면 셸 기록에 남습니다). 쓰는 Claude Code 버전이 `headers` 안의 `${VAR}`를 풀어 주는지 확인하세요. 설정에서 `allowedMcpServers`로 MCP 서버를 제한했다면 이 서버도 허용해야 합니다. 허용하지 않으면 Claude Code가 이 서버를 막아 연결되지 않고 도구도 보이지 않습니다(`claude -p`에서는 stderr에 `Warning: MCP server blocked by enterprise policy: <이름>`이 나옵니다).
 
 응답: 키가 없거나 틀리거나 폐기됐으면 401, `--min-role`보다 낮은 역할이거나 허용되지 않은 Host면 403입니다.
 

@@ -75,7 +75,7 @@ Redis URL을 `--config` 같은 명령 인자로 넘기면 비밀번호가 셸 �
 
 Redis URL은 비밀번호를 포함하므로 OS 자격 증명 저장소에 저장됩니다. 나머지 두 값은 Claude Code 설정에 저장됩니다.
 
-연결 확인: Claude Code의 `/mcp` 목록에서 `plugin:ks:ks`가 연결됐는지 봅니다. 설정의 `allowedMcpServers`로 MCP 서버를 제한하고 있다면 ks 서버도 허용해야 합니다. 허용되지 않은 서버는 경고 없이 빠지고, 스킬은 `ks_*` 도구가 없다고만 답합니다.
+연결 확인: Claude Code의 `/mcp` 목록에서 `plugin:ks:ks`가 연결됐는지 봅니다. 설정의 `allowedMcpServers`로 MCP 서버를 제한하고 있다면 ks 서버도 허용해야 합니다. 허용하지 않으면 Claude Code가 이 서버를 막아 연결되지 않고 도구도 보이지 않습니다(`claude -p`에서는 stderr에 `Warning: MCP server blocked by enterprise policy: <이름>`이 나옵니다).
 
 ## 스킬
 

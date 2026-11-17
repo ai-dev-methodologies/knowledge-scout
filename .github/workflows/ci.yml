@@ -85,13 +85,15 @@ jobs:
 
       - name: Install stable Rust with the musl target
         run: |
-          rustup toolchain install stable --profile minimal --target x86_64-unknown-linux-musl
+          rustup toolchain install stable --profile minimal
           rustup default stable
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+          rustc --version
 
+      # No musl-tools from apt: the Rust musl target ships its own crt objects and libc.a (self-contained linking,
+      # static by default), and no dependency compiles C for this target.
       - name: Build
-        run: cargo build --release -p ks-cli --locked --target x86_64-unknown-linux-musl
+        run: cargo build --release --target x86_64-unknown-linux-musl --locked -p ks-cli
 
       - name: Check and package
         run: |
@@ -100,6 +102,10 @@ jobs:
           cp target/x86_64-unknown-linux-musl/release/ks dist/ks
           file dist/ks
           file dist/ks | grep -Eq 'statically linked|static-pie linked' || { echo "ks is not statically linked" >&2; exit 1; }
+          # glibc ldd exits 1 on a static binary; the output is what is checked.
+          ldd_out="$(ldd dist/ks 2>&1 || true)"
+          echo "ldd: $ldd_out"
+          echo "$ldd_out" | grep -Eq 'not a dynamic executable|statically linked' || { echo "ldd reports shared libraries" >&2; exit 1; }
           [ "$(./dist/ks --version)" = "ks $(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="ks-cli") | .version')" ]
           ./dist/ks --version
           (cd dist && sha256sum ks > ks.sha256 && cat ks.sha256)

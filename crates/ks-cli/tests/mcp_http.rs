@@ -431,6 +431,21 @@ fn noauth_loopback_search_keyword_and_nl() {
 }
 
 #[test]
+fn search_without_terms_field_is_natural_language() {
+    let f = Fixture::new("noterms");
+    let s = serve(&f.root, &["--no-auth", "--backend", "file"], &[]);
+    // a generic MCP client follows the schema: `terms` must not be required
+    let (_, tools) = tool_names(&s, None);
+    let schema = &tools.iter().find(|t| t["name"] == "ks_search").unwrap()["inputSchema"];
+    let required = schema["required"].as_array().cloned().unwrap_or_default();
+    assert!(!required.contains(&json!("terms")), "{schema}");
+    // and a call that leaves `terms` out searches by the sentence's words
+    let t = call(&s, None, "ks_search", json!({"query": "How do I expire user sessions kept in Redis?"})).unwrap();
+    let v: Value = serde_json::from_str(&t).unwrap();
+    assert_eq!(ids(&v).first(), Some(&f.cards[0].id), "{v}");
+}
+
+#[test]
 fn no_auth_loopback_is_reader() {
     let f = Fixture::new("reader");
     let s = serve(&f.root, &["--no-auth", "--backend", "file"], &[]);

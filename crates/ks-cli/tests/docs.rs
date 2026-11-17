@@ -152,7 +152,7 @@ fn docs_no_local_paths() {
     files.extend(doc_files());
     for rel in files {
         assert!(
-            !read(&rel).contains("/Users/"),
+            !read(&rel).contains(concat!("/", "Users/")), // split so the literal itself is not a local path
             "{rel}: contains a local path"
         );
     }

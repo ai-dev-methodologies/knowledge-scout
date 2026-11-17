@@ -30,9 +30,10 @@ const HTTP_UNAVAILABLE: &str = "the card pool is unavailable right now; the oper
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct SearchParams {
-    /// Controlled-vocabulary terms and short Korean problem phrases extracted from the task description (at most 32, each at most 64 characters).
+    /// Controlled-vocabulary terms and short Korean problem phrases extracted from the task description (at most 32, each at most 64 characters). May be omitted.
+    #[serde(default)]
     terms: Vec<String>,
-    /// The task description in plain words (at most 512 characters). Its words are used as search terms when `terms` is empty.
+    /// The task description in plain words (at most 512 characters). Its words are used as search terms when `terms` is empty or omitted.
     query: String,
     /// Maximum number of candidates to return (default 40).
     limit: Option<u64>,
